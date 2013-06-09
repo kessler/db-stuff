@@ -1,7 +1,7 @@
 var vows = require('vows');
 var assert = require('assert');
 
-var Insert = require('../lib/Datastore.Insert');
+var Insert = require('../lib/Insert');
 var Datastore = require('../lib/Datastore');
 
 var suite = vows.describe('Insert');

@@ -1,7 +1,7 @@
 var vows = require('vows');
 var assert = require('assert');
 var Datastore = require('../lib/Datastore');
-var BulkInsert = require('../lib/Datastore.BulkInsert');
+var BulkInsert = require('../lib/BulkInsert');
 
 var suite = vows.describe('BulkInsert');
 
