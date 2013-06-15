@@ -1,164 +1,152 @@
-var vows = require('vows');
+var $u = require('util');
 var assert = require('assert');
-var Datastore = require('../lib/Datastore');
+var createDatastore = require('../index').create;
 var BulkInsert = require('../lib/BulkInsert');
 
-var suite = vows.describe('BulkInsert');
+describe('BulkInsert - basic operations', function() {
+	var datastore = createDatastore('DevelopmentDatastore');
+	var topic = new BulkInsert(datastore, 'test', ['a', 'b']);
 
-var batch1dsA = Datastore.create('DevelopmentDatastore');
-var batch1dsB = Datastore.create('DevelopmentDatastore');
+	it('can accept an array of values and format it', function() {
+		topic.insert([1, '2']);
 
-var batch2dsA = Datastore.create('DevelopmentDatastore');
-var batch2dsB = Datastore.create('DevelopmentDatastore');
+		assert.strictEqual(topic.buffer.length, 1);
+		assert.strictEqual(topic.buffer[0], '(1,\'2\')');
+	});
 
-var batch3dsA = Datastore.create('DevelopmentDatastore');
-
-suite.addBatch({
-	'basic operations': {
-		topic: function() {
-			var bi = new BulkInsert(batch1dsA, 'test', ['a', 'b']);
-
-			return bi;
-		},
-		'can insert an array and it will be formatted': function(topic) {
-			topic.insert([1, '2']);
-
-			assert.lengthOf(topic.buffer, 1);
-			assert.strictEqual(topic.buffer[0], '(1,\'2\')');
-		},		
-		'inserting an array row with field count that doesnt match the field count will result in an error': function(topic) {
-			try {
-				topic.insert([1,'2',3]);
-				assert.fail('should have thrown an error because number of fields in inserted row is not 2');
-			} catch(e) {
-				assert.ok('expected error was thrown');
-			}
-		},
-		'when flushing, insert a query to datastore made from all the values in the buffer and clear the buffer': function(topic) {			
-			topic.flush();			
-			assert.lengthOf(batch1dsA.queries, 1);						
-			assert.strictEqual(batch1dsA.queries[0], "insert into test (a,b) values (1,'2')");
-			assert.lengthOf(topic.buffer, 0);
-		},
-		'when threshold is reached flush occurs': function(topic) {
-
-			// insert threshold -1 rows
-			for (var i = 0; i < topic.params.threshold - 1; i++) 
-				topic.insert([1, '2']);
-
-			// make sure everything is as expected
-			assert.lengthOf(topic.buffer, topic.params.threshold - 1);
-
-			topic.insert([1, '2']);
-			assert.lengthOf(topic.buffer, 0);			
-		}		
-	},
-	'when fields are specified in the construction of the bulk insert': {
-		topic: function() {
-			return new BulkInsert(batch1dsB, 'test', { threshold: 10 }, ['a', 'b', 'c']);
-		},
-		'field count is wired in before a single insert occurs': function(topic) {
-			assert.strictEqual(topic.fieldCount, 3);
-		},
-		'fields are formatted into the sql base used in each insert': function(topic) {			
-			assert.strictEqual(topic.sqlBase, 'insert into test (a,b,c) values ');
-		},
-		'an error is thrown if the number of fields in a row does not match the field count': function(topic) {
-			try {
-				topic.insert([1,3]);
-				assert.fail('should have thrown an error because number of fields in inserted row is not 2');
-			} catch(e) {
-				assert.ok('expected error was thrown');
-			}
-		},
-		'when a flush occurs field count will not reset': function(topic) {
-			for (var i = 0; i < topic.params.threshold; i++) {
-				topic.insert([1,2,3]);
-			}
-
-			assert.lengthOf(batch1dsB.queries, 1);
-			assert.lengthOf(topic.buffer, 0);
-			assert.strictEqual(topic.fieldCount, 3);
+	it('inserting an array row with field count that doesnt match the predefined field count will result in an error', function() {
+		try {
+			topic.insert([1,'2',3]);
+			assert.fail('should have thrown an error because number of fields in inserted row is not 2');
+		} catch(e) {
+			assert.ok('expected error was thrown');
 		}
-	}
+	});
+
+	it('generate a multi line insert query when flushing, made from all the values in the buffer and then clear the buffer', function() {			
+		topic.flush();			
+		assert.strictEqual(datastore.queries.length, 1);						
+		assert.strictEqual(datastore.queries[0], "insert into test (a,b) values (1,'2')");
+		assert.strictEqual(topic.buffer.length, 0);
+	});
+
+	it('flushes when a threshold is reached', function() {
+		// insert threshold -1 rows
+		for (var i = 0; i < topic.params.threshold - 1; i++) 
+			topic.insert([1, '2']);
+
+		// make sure everything is as expected
+		assert.strictEqual(topic.buffer.length, topic.params.threshold - 1);
+
+		topic.insert([1, '2']);
+		assert.strictEqual(topic.buffer.length, 0);			
+	});
+
 });
 
-suite.addBatch({
-	'flush occurs after idling for a certain amount of time': {
-		topic: function() {
-			var bi = new BulkInsert(batch2dsA, 'test', { idleFlushPeriod: 100 }, ['a']);
-			bi.insert([1]);
-			var self = this;
-			setTimeout(function() {
-				self.callback(null, bi);
-			}, 102);
-		},
-		'check flush occurred': function (bi) {
-			assert.lengthOf(batch2dsA.queries, 1);
-			assert.lengthOf(bi.buffer, 0);
+describe('BulkInsert - construction', function() {
+	var datastore = createDatastore('DevelopmentDatastore');
+	var topic =	new BulkInsert(datastore, 'test', { threshold: 10 }, ['a', 'b', 'c']);
+
+	it('sets the field count accordingly', function() {
+		assert.strictEqual(topic.fieldCount, 3);
+	});
+
+	it('creates a template for the insert query', function() {			
+		assert.strictEqual(topic.sqlBase, 'insert into test (a,b,c) values ');
+	});
+
+	it('throws an error if the number of fields in a row does not match the field count', function() {
+		try {
+			topic.insert([1,3]);
+			assert.fail('should have thrown an error because number of fields in inserted row is not 2');
+		} catch(e) {
+			assert.ok('expected error was thrown');
 		}
-	},
-	'idle period is reset if a flush occurs earlier': {
-		topic: function() {
-			var bi = new BulkInsert(batch2dsB, 'test', { threshold: 10, idleFlushPeriod: 100 }, ['a']);
-			bi.insert([1]);
-			var self = this;
+	});
 
+	it('when a flush occurs field count will not reset', function() {
+		for (var i = 0; i < topic.params.threshold; i++) {
+			topic.insert([1,2,3]);
+		}
+
+		assert.strictEqual(datastore.queries.length, 1);
+		assert.strictEqual(topic.buffer.length, 0);
+		assert.strictEqual(topic.fieldCount, 3);
+	});
+});
+
+describe('BulkInsert - idle flushing', function () {
+	it('flushes after idling for a certain amount of time', function(done) {
+		var datastore = createDatastore('DevelopmentDatastore');
+		var topic = new BulkInsert(datastore, 'test', { idleFlushPeriod: 100 }, ['a']);
+
+		topic.insert([1]);
+
+		var self = this;
+
+		setTimeout(function() {		
+			assert.strictEqual(datastore.queries.length, 1);
+			assert.strictEqual(topic.buffer.length, 0);
+			done();
+		}, 110);	
+	});
+
+	it('resets the idle period if a flush occurs due to other reasons', function (done) {
+		var datastore = createDatastore('DevelopmentDatastore');
+		var topic = new BulkInsert(datastore, 'test', { threshold: 10, idleFlushPeriod: 100 }, ['a']);
+		topic.insert([1]);
+		var self = this;
+
+		setTimeout(function() {
+			for (var i = 0; i < 10; i++)
+				topic.insert([1]);
+
+			//check first flush occurred due to threshold
+			assert.strictEqual(topic.buffer.length, 1);
+			assert.strictEqual(datastore.queries.length, 1);			
+
+			//flush period should have reset to 100ms
 			setTimeout(function() {
-				for (var i = 0; i < 10; i++)
-					bi.insert([1]);
+				//no flush should have happened by now
+				assert.strictEqual(topic.buffer.length, 1);
+				assert.strictEqual(datastore.queries.length, 1);			
 
-				self.callback(null, bi);
-			}, 50);
-		},
-		'check first flush occurred due to threshold': function(bi) {
-			assert.lengthOf(bi.buffer, 1);
-			assert.lengthOf(batch2dsB.queries, 1);			
-		},
-		'flush should be 100ms after threshold flush occurred - first check after 50ms to make sure it was delayed from the original eta': {
-			topic: function(bi) {
-				var self = this;
+				//after additional 50ms an idle flush should occur
 				setTimeout(function() {
-					self.callback(null, bi);
-				}, 50);
-			},
-			'no flush should have happened by now': function(bi) {
-				assert.lengthOf(bi.buffer, 1);
-				assert.lengthOf(batch2dsB.queries, 1);
-			},
-			'after additional 50ms an idle flush should occur': {
-				topic: function(bi) {
-					var self = this;
-					setTimeout(function() {
-						self.callback(null, bi);
-					}, 51);
-				},
-				'check idle flush did occur': function(bi) {
-					assert.lengthOf(bi.buffer, 0);
-					assert.lengthOf(batch2dsB.queries, 2);
-				}
-			}
-		}
-	}
+					assert.strictEqual(topic.buffer.length, 0);
+					assert.strictEqual(datastore.queries.length, 2);			
+					done();
+				}, 51);
+
+			}, 50);
+
+		}, 50);
+	})
 });
 
-suite.addBatch({
-	'BulkInsert is an event emitter': {
-		topic: function() {
-			return new BulkInsert(batch3dsA, 'test', { threshold: 10, idleFlushPeriod: 100 }, ['a']);
-		},
-		'when a flush occurs it fires an event': {
-			topic: function(topic) {				
-				topic.on('flush', this.callback);
-				for (var i = 0; i < topic.params.threshold; i++)
-					topic.insert([1]);
-			},
-			'event callback': function(err, results, sql) {								
-				assert.strictEqual(sql, 'insert into test (a) values (1),(1),(1),(1),(1),(1),(1),(1),(1),(1)');
-				//TODO: need a better way to make sure this is infact some sort of query, maybe an interface or something, exported from Datastore
-			}
-		}
-	}
-})
+describe('BulkInsert is an event emitter', function() {
+	var datastore = createDatastore('DevelopmentDatastore');
+	var topic = new BulkInsert(datastore, 'test', { threshold: 10, idleFlushPeriod: 100 }, ['a']);
+	
+	it('fire an event when a flush occurs', function (done) {
+		
+		topic.on('flush', callback);
 
-suite.export(module);
+		for (var i = 0; i < topic.params.threshold; i++)
+			topic.insert([1]);
+
+		function callback(err, results, sql) {								
+			assert.strictEqual(sql, 'insert into test (a) values (1),(1),(1),(1),(1),(1),(1),(1),(1),(1)');
+			//TODO: need a better way to make sure this is infact some sort of query, maybe an interface or something, exported from Datastore
+			done();
+		}
+	});
+});
+	
+
+// describe('BulkInsert memory footprint', function() {
+
+// });	
+		
+

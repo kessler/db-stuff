@@ -1,3 +1,69 @@
-module.exports.Datastore = require('./lib/Datastore');
+var logger = require('log4js').getLogger('db-stuff');
+
+var PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore');
+var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore');
+var DatastoreBase = module.exports.DatastoreBase = require('./lib/DatastoreBase');
+
 module.exports.Insert = require('./lib/Insert');
 module.exports.BulkInsert = require('./lib/BulkInsert');
+
+/*
+	factory for creating datastores.
+
+	usage:
+
+	var ds = Datastore.create( { implementation: 'SomeImplementation', logEnabled: false, additional config params... }, myCallback);
+
+	var ds = Datastore.create( { implementation: 'SomeImplementation', additional config params... });
+
+	var ds = Datastore.create('SomeImplementation', myCallback);
+
+	var ds = Datastore.create('SomeImplementation');
+*/
+function create(config, callback) {
+	var ds;
+
+	var implementation;
+	var logEnabled = true;
+	
+	if (typeof(config) === 'string') {
+		implementation = config;
+	} else {
+		implementation = config.implementation;
+
+		if (config.logEnabled !== undefined)
+			logEnabled = config.logEnabled;
+	}
+
+	if (implementation === 'PostgresDatastore') {
+		ds = new PostgresDatastore(config);
+	} else if (implementation === 'DevelopmentDatastore'){
+		ds = new DevelopmentDatastore();
+	} else if (implementation === 'BlackholeDatastore'){
+		ds = new BlackholeDatastore();
+	} else {
+		throw new Error('Must specify implementation');
+	}
+
+	// async
+	ds.create(function(err) {
+		if (err === null && logEnabled)
+			logger.info('** datastore connected, implementation is %s **', implementation);
+
+		if (callback)
+			callback(err, ds);
+	});
+
+	return ds;
+};
+
+module.exports.create = create;
+
+
+//backward compatibility:
+module.exports.Datastore = {
+	PostgresDatastore: PostgresDatastore,
+	DevelopmentDatastore: DevelopmentDatastore,
+	DatastoreBase: DatastoreBase,
+	create: create
+};

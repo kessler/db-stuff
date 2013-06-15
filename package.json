@@ -1,6 +1,6 @@
 {
     "name": "db-stuff",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "description": "db-stuff",
     "main": "index.js",    
     "author": {
@@ -10,10 +10,7 @@
         "async":                "*",
         "pg":                   "*",
         "log4js":               "*"
-    },
-    "devDependencies": {
-        "vows":     "*"
-    },
+    },    
     "repository": {
         "type": "git",
         "url": "http://github.com/yanush/db-stuff.git"
@@ -23,8 +20,8 @@
     },
     "licenses": [
         {
-        "type": "MIT",
-        "url": "https://raw.github.com/yanush/db-stuff/master/LICENSE"
+            "type": "MIT",
+            "url": "https://raw.github.com/yanush/db-stuff/master/LICENSE"
         }
     ],
     "engine": {
