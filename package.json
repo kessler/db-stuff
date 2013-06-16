@@ -1,6 +1,6 @@
 {
     "name": "db-stuff",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "db-stuff",
     "main": "index.js",    
     "author": {
@@ -9,7 +9,8 @@
     "dependencies": {
         "async":                "*",
         "pg":                   "*",
-        "log4js":               "*"
+        "log4js":               "*",
+        "mysql":                "2.0.0-alpha8"
     },    
     "repository": {
         "type": "git",

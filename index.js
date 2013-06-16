@@ -1,8 +1,19 @@
 var logger = require('log4js').getLogger('db-stuff');
 
 var PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore');
+var MysqlDatastore = module.exports.MysqlDatastore = require('./lib/MysqlDatastore');
 var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore');
 var DatastoreBase = module.exports.DatastoreBase = require('./lib/DatastoreBase');
+
+//backward compatibility:
+module.exports.Datastore = {
+	PostgresDatastore: PostgresDatastore,
+	DevelopmentDatastore: DevelopmentDatastore,
+	MysqlDatastore: MysqlDatastore,
+	DatastoreBase: DatastoreBase,
+	create: create
+};
+//end backward compatibility:
 
 module.exports.Insert = require('./lib/Insert');
 module.exports.BulkInsert = require('./lib/BulkInsert');
@@ -37,6 +48,8 @@ function create(config, callback) {
 
 	if (implementation === 'PostgresDatastore') {
 		ds = new PostgresDatastore(config);
+	} else if (implementation === 'MysqlDatastore') {
+		ds = new MysqlDatastore(config);
 	} else if (implementation === 'DevelopmentDatastore'){
 		ds = new DevelopmentDatastore();
 	} else if (implementation === 'BlackholeDatastore'){
@@ -60,10 +73,3 @@ function create(config, callback) {
 module.exports.create = create;
 
 
-//backward compatibility:
-module.exports.Datastore = {
-	PostgresDatastore: PostgresDatastore,
-	DevelopmentDatastore: DevelopmentDatastore,
-	DatastoreBase: DatastoreBase,
-	create: create
-};
