@@ -1,6 +1,6 @@
 {
     "name": "db-stuff",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "description": "db-stuff",
     "main": "index.js",    
     "author": {
@@ -14,15 +14,15 @@
     },    
     "repository": {
         "type": "git",
-        "url": "http://github.com/yanush/db-stuff.git"
+        "url": "http://github.com/kessler-y/db-stuff.git"
     },    
     "bugs": {
-        "url": "http://github.com/yanush/db-stuff/issues"
+        "url": "http://github.com/kessler-y/db-stuff/issues"
     },
     "licenses": [
         {
             "type": "MIT",
-            "url": "https://raw.github.com/yanush/db-stuff/master/LICENSE"
+            "url": "https://raw.github.com/kessler-y/db-stuff/master/LICENSE"
         }
     ],
     "engine": {
