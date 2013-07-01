@@ -1,6 +1,6 @@
 {
     "name": "db-stuff",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "description": "db-stuff",
     "main": "index.js",    
     "author": {

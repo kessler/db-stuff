@@ -63,8 +63,10 @@ function create(config, callback) {
 		if (err === null && logEnabled)
 			logger.info('** datastore connected, implementation is %s **', implementation);
 
-		if (callback)
+		if (callback) {
+			err.implementation = config.implementation;
 			callback(err, ds);
+		}
 	});
 
 	return ds;
