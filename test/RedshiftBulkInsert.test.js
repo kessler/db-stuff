@@ -6,6 +6,8 @@ describe('RedshiftBulkInsert', function() {
 
 	it('contructor', function() {
 
+		var startIdleFlushMonitorCalled = false;
+
 		var options = {
 			datastore: 'testDatastore',
 			tableName: 'testTable',
@@ -25,10 +27,16 @@ describe('RedshiftBulkInsert', function() {
 
 			_createS3: function() {
 
+			},
+
+			startIdleFlushMonitor: function() {
+				startIdleFlushMonitorCalled = true;
 			}
 		};
 
 		RedshiftBulkInsert.bind(mock)(options);
+
+		assert(startIdleFlushMonitorCalled);
 
 		assert(mock._datastore === options.datastore);
 		assert(mock._tableName === options.tableName);
