@@ -17,6 +17,7 @@ module.exports.Datastore = {
 
 module.exports.Insert = require('./lib/Insert');
 module.exports.BulkInsert = require('./lib/BulkInsert');
+module.exports.RedshiftBulkInsert = require('./lib/RedshiftBulkInsert');
 
 /*
 	factory for creating datastores.
@@ -36,7 +37,7 @@ function create(config, callback) {
 
 	var implementation;
 	var logEnabled = true;
-	
+
 	if (typeof(config) === 'string') {
 		implementation = config;
 	} else {
