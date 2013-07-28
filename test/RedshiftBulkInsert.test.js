@@ -1,31 +1,43 @@
 var _ = require('underscore');
-var BulkInsert2 = require('../lib/BulkInsert2.js');
+var RedshiftBulkInsert = require('../lib/RedshiftBulkInsert.js');
 var assert = require('assert');
 
-describe('BulkInsert2', function() {
+describe('RedshiftBulkInsert', function() {
 
-	it.skip('contructor', function() {
+	it('contructor', function() {
 
-		var datastore = 'testDatastore';
-		var table = 'testTable';
-		var paramsOrFields = 'testParamsOrFields';
-		var fields = ['xxx', 'yyy'];
-		var bucketName = 'testbucketName';
-		var pathToLogs = 'testPathToLogs';
-		var awsAccessKeyId = 'testAwsAccessKeyId';
-		var awsSecretAccessKey = 'testAwsSecretAccessKey';
+		var options = {
+			datastore: 'testDatastore',
+			tableName: 'testTable',
+			paramsOrFields: 'testParamsOrFields',
+			fields: ['xxx', 'yyy'],
+			awsBucketName: 'testbucketName',
+			pathToLogs: '/dev',
+			awsAccessKeyId: 'testAwsAccessKeyId',
+			awsSecretAccessKey: 'testAwsSecretAccessKey'
+		};
 
-		var result = new BulkInsert2(datastore, table, paramsOrFields,
-			fields, bucketName, pathToLogs, awsAccessKeyId, awsSecretAccessKey);
+		var mock = {
 
-		assert(this._datastore === datastore);
-		assert(this._table === table);
-		assert(this._paramsOrFields === paramsOrFields);
-		assert(this._fields === fields);
-		assert(this._bucketName === bucketName);
-		assert(this._pathToLogs === pathToLogs);
-		assert(this._awsAccessKeyId === awsAccessKeyId);
-		assert(this._awsSecretAccessKey === awsSecretAccessKey);
+			_getLogFileName: function() {
+				return 'null';
+			},
+
+			_createS3: function() {
+
+			}
+		};
+
+		RedshiftBulkInsert.bind(mock)(options);
+
+		assert(mock._datastore === options.datastore);
+		assert(mock._tableName === options.tableName);
+		//assert(mock._paramsOrFields === options.paramsOrFields);
+		assert(mock._fields === options.fields);
+		assert(mock._awsBucketName === options.awsBucketName);
+		assert(mock._pathToLogs === options.pathToLogs);
+		assert(mock._awsAccessKeyId === options.awsAccessKeyId);
+		assert(mock._awsSecretAccessKey === options.awsSecretAccessKey);
 
 	});
 
@@ -33,13 +45,13 @@ describe('BulkInsert2', function() {
 
 		var mock = {
 
-			_escapeValue: BulkInsert2.prototype._escapeValue
+			_escapeValue: RedshiftBulkInsert.prototype._escapeValue
 
 		};
 
 		var row = ['xxx', 123, 0.5, null, undefined];
 
-		var result = BulkInsert2.prototype._rowToLine.bind(mock)(row);
+		var result = RedshiftBulkInsert.prototype._rowToLine.bind(mock)(row);
 
 		assert(result === 'xxx|123|0.5|\\N|\\N');
 
@@ -49,21 +61,21 @@ describe('BulkInsert2', function() {
 
 		it ('null => \\N', function() {
 
-			var result = BulkInsert2.prototype._escapeValue(null);
+			var result = RedshiftBulkInsert.prototype._escapeValue(null);
 			assert(result === '\\N');
 
 		});
 
 		it ('\\ => \\\\', function() {
 
-			var result = BulkInsert2.prototype._escapeValue('\\');
+			var result = RedshiftBulkInsert.prototype._escapeValue('\\');
 			assert(result === '\\\\');
 
 		});
 
 		it ('| => \\|', function() {
 
-			var result = BulkInsert2.prototype._escapeValue('|');
+			var result = RedshiftBulkInsert.prototype._escapeValue('|');
 			assert(result === '\\|');
 
 		});
@@ -95,7 +107,7 @@ describe('BulkInsert2', function() {
 			}
 		};
 
-		BulkInsert2.prototype.insert.bind(mock)(testRow);
+		RedshiftBulkInsert.prototype.insert.bind(mock)(testRow);
 
 		assert(rowToLineCalled);
 		assert(fileWrite);
@@ -110,17 +122,16 @@ describe('BulkInsert2', function() {
 		var fileName = '34565467567.log';
 
 		var mock = {
+			_fields: ['xxx', 'yyy'],
 			_tableName: 'testTable',
-			_bucketName: 'testBucket',
+			_awsBucketName: 'testBucket',
 			_awsAccessKeyId: 'testAwsAccessKeyId',
 			_awsSecretAccessKey: 'testAwsSecretAccessKey'
 		};
 
-		var expected = "COPY testTable FROM 's3://testBucket/34565467567.log'"
-			+ " CREDENTIALS 'aws_access_key_id=testAwsAccessKeyId;aws_secret_access_key=testAwsSecretAccessKey'"
-			+ "  DELIMITER '|' NULL AS '\\N' ESCAPE '\\'";
+		var expected = "COPY testTable (xxx, yyy) FROM 's3://testBucket/34565467567.log' CREDENTIALS 'aws_access_key_id=testAwsAccessKeyId;aws_secret_access_key=testAwsSecretAccessKey'";
 
-		var result = BulkInsert2.prototype._getCopyQuery.bind(mock)(fileName);
+		var result = RedshiftBulkInsert.prototype._getCopyQuery.bind(mock)(fileName);
 
 		assert(result === expected);
 
@@ -133,7 +144,7 @@ describe('BulkInsert2', function() {
 			var fileName = 'testFileName.log';
 			var err = 'Test error';
 
-			BulkInsert2.prototype._onSentToS3(fileName, err);
+			RedshiftBulkInsert.prototype._onSentToS3(fileName, err);
 
 		});
 
@@ -169,7 +180,7 @@ describe('BulkInsert2', function() {
 				}
 			};
 
-			BulkInsert2.prototype._onSentToS3.bind(mock)(testFileName);
+			RedshiftBulkInsert.prototype._onSentToS3.bind(mock)(testFileName);
 
 			assert(onSentCopyToRedshiftCalled);
 			assert(datastoreQueryCalled);
@@ -186,19 +197,21 @@ describe('BulkInsert2', function() {
 			var testFileName = 'testFileName.log';
 			var testErr = 'test error';
 
-			BulkInsert2.prototype._sendToS3(testFileName, testErr);
+			RedshiftBulkInsert.prototype._sendToS3(testFileName, testErr);
 
 		});
 
 		it('do things', function() {
 
 			var testFileName = 'testFileName.log';
+			var testAwsBucketName = 'testAwsBucketName';
 			var testErr = null;
 			var testBody = 'testBody';
 
 			var expectedParams = {
 				Body: testBody,
-				Key: testFileName
+				Key: testFileName,
+				Bucket: testAwsBucketName
 			};
 
 			var onSentToS3Called = false;
@@ -206,12 +219,14 @@ describe('BulkInsert2', function() {
 
 			var mock = {
 
+				_awsBucketName: testAwsBucketName,
+
 				_onSentToS3: function(fileName) {
 					assert(fileName === testFileName);
 					onSentToS3Called = true;
 				},
 
-				_s3bucket: {
+				_s3: {
 
 					putObject: function(params, callback) {
 						assert.deepEqual(params, expectedParams);
@@ -221,7 +236,7 @@ describe('BulkInsert2', function() {
 				}
 			};
 
-			BulkInsert2.prototype._sendToS3.bind(mock)(testFileName, testErr, testBody);
+			RedshiftBulkInsert.prototype._sendToS3.bind(mock)(testFileName, testErr, testBody);
 
 			assert(onSentToS3Called);
 			assert(s3bucketPutObject);
@@ -232,16 +247,26 @@ describe('BulkInsert2', function() {
 
 	it('flush rotates and reads file', function() {
 
-		var testFileName = 'testFileName.log';
-		var testPathToLogs = 'testPathToLogs.log';
+		var testFileName = 'null';
+		var testPathToLogs = '/dev';
 
 		var fileSetupFileCalled = false;
 		var sendToS3Called = false;
+		var startIdleFlushMonitor = false;
 
 		var mock = {
 
 			_fileName: testFileName,
 			_pathToLogs: testPathToLogs,
+			_hasEventsInFile: true,
+
+			_getLogFileName: function() {
+				return 'newFileName.log';
+			},
+
+			startIdleFlushMonitor: function() {
+				startIdleFlushMonitor = true;
+			},
 
 			_file: {
 
@@ -260,12 +285,13 @@ describe('BulkInsert2', function() {
 
 		}
 
-		BulkInsert2.prototype.flush.bind(mock)();
+		RedshiftBulkInsert.prototype.flush.bind(mock)();
 
 		assert(mock._fileName !== testFileName);
 
 		assert(fileSetupFileCalled);
 		//assert(sendToS3Called);
+		assert(startIdleFlushMonitor);
 
 	});
 
