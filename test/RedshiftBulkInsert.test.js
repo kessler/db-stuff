@@ -147,16 +147,31 @@ describe('RedshiftBulkInsert', function() {
 
 	describe('_onSentToS3', function() {
 
-		it('do nothing when pass error', function() {
+		it('calls _decrimentActiveFlushOpsAndEmitFlushEvent when error is passed', function() {
 
 			var fileName = 'testFileName.log';
 			var err = 'Test error';
+			var testStart = 678966745645;
 
-			RedshiftBulkInsert.prototype._onSentToS3(fileName, err);
+			var decrimentActiveFlushOpsAndEmitFlushEventCalled = false;
+
+			var mock = {
+
+				_decrimentActiveFlushOpsAndEmitFlushEvent: function(start, err, result) {
+					assert(start === testStart);
+					assert(err === err);
+					decrimentActiveFlushOpsAndEmitFlushEventCalled = true;
+				}
+
+			};
+
+			RedshiftBulkInsert.prototype._onSentToS3.bind(mock)(fileName, testStart, err);
+
+			assert(decrimentActiveFlushOpsAndEmitFlushEventCalled);
 
 		});
 
-		it('do things', function() {
+		it('do things when error is not passed', function() {
 
 			var testFileName = 'testFileName.log';
 			var testCopyQuery = 'testCopyQuery';
@@ -200,18 +215,34 @@ describe('RedshiftBulkInsert', function() {
 
 	describe('_sendToS3', function() {
 
-		it('do nothing when pass error', function() {
+		it('calls _decrimentActiveFlushOpsAndEmitFlushEvent when error is passed', function() {
 
 			var testFileName = 'testFileName.log';
 			var testErr = 'test error';
+			var testStart = 4353457;
 
-			RedshiftBulkInsert.prototype._sendToS3(testFileName, testErr);
+			var decrimentActiveFlushOpsAndEmitFlushEventCalled = false;
+
+			var mock = {
+
+				_decrimentActiveFlushOpsAndEmitFlushEvent: function(start, err, result) {
+					assert(testStart === start);
+					assert(err === testErr);
+					decrimentActiveFlushOpsAndEmitFlushEventCalled = true;
+				}
+
+			};
+
+			RedshiftBulkInsert.prototype._sendToS3.bind(mock)(testFileName, testStart, testErr);
+
+			assert(decrimentActiveFlushOpsAndEmitFlushEventCalled);
 
 		});
 
 		it('do things', function() {
 
 			var testFileName = 'testFileName.log';
+			var testStart = 56455767;
 			var testAwsBucketName = 'testAwsBucketName';
 			var testErr = null;
 			var testBody = 'testBody';
@@ -223,6 +254,7 @@ describe('RedshiftBulkInsert', function() {
 			};
 
 			var onSentToS3Called = false;
+			var decrimentActiveFlushOpsAndEmitFlushEventNotCalled = true;
 			var s3bucketPutObject = false;
 
 			var mock = {
@@ -244,7 +276,7 @@ describe('RedshiftBulkInsert', function() {
 				}
 			};
 
-			RedshiftBulkInsert.prototype._sendToS3.bind(mock)(testFileName, testErr, testBody);
+			RedshiftBulkInsert.prototype._sendToS3.bind(mock)(testFileName, testStart, testErr, testBody);
 
 			assert(onSentToS3Called);
 			assert(s3bucketPutObject);
@@ -253,53 +285,124 @@ describe('RedshiftBulkInsert', function() {
 
 	});
 
-	it('flush rotates and reads file', function() {
+	describe('flush', function() {
 
-		var testFileName = 'null';
-		var testPathToLogs = '/dev';
+		it('do nothing if number of events is equals to zero', function() {
 
-		var fileSetupFileCalled = false;
-		var sendToS3Called = false;
-		var startIdleFlushMonitor = false;
+			var startIdleFlushMonitorCalled = false;
+
+			var mock = {
+
+				_numberOfEventsInFile: 0,
+				activeFlushOps: 0,
+
+				startIdleFlushMonitor: function() {
+					startIdleFlushMonitorCalled = true;
+				}
+			};
+
+			RedshiftBulkInsert.prototype.flush.bind(mock)();
+
+			assert(mock.activeFlushOps === 0);
+			assert(startIdleFlushMonitorCalled);
+
+		});
+
+		it('rotates when number of events is not equals to zero', function() {
+
+			var testFileName = 'null';
+			var testPathToLogs = '/dev';
+			var testNewFileName = 'newFileName.log';
+
+			var fileSetupFileCalled = false;
+			var sendToS3Called = false;
+			var startIdleFlushMonitor = false;
+			var fsReadFileCalled = false;
+
+			var mock = {
+
+				_fileName: testFileName,
+				_pathToLogs: testPathToLogs,
+				_hasEventsInFile: true,
+				_numberOfEventsInFile: 5,
+				activeFlushOps: 2,
+
+				_getLogFileName: function() {
+					return testNewFileName;
+				},
+
+				startIdleFlushMonitor: function() {
+					startIdleFlushMonitor = true;
+				},
+
+				_file: {
+
+					setupFile: function(fileName) {
+						assert(_.isString(fileName));
+						assert(mock._fileName === testNewFileName);
+						assert(fileName !== testFileName);
+						fileSetupFileCalled = true;
+					}
+
+				},
+
+				_fs: {
+					readFile: function(path, callback) {
+						assert(path === '/dev/null');
+						callback();
+						fsReadFileCalled = true;
+					}
+				},
+
+				_sendToS3: function(fileName) {
+					assert(fileName === testFileName);
+					sendToS3Called = true;
+				}
+
+			}
+
+			RedshiftBulkInsert.prototype.flush.bind(mock)();
+
+			assert(mock.activeFlushOps === 3);
+			assert(mock._fileName === testNewFileName);
+			assert(mock._fileName !== testFileName);
+			assert(mock.activeFlushOps);
+
+			assert(fileSetupFileCalled);
+			assert(sendToS3Called);
+			assert(startIdleFlushMonitor);
+			assert(fsReadFileCalled);
+
+		});
+
+	});
+
+	it('_decrimentActiveFlushOpsAndEmitFlushEvent', function() {
+
+		var testError = 'testError';
+		var testStart = 46576767;
+		var testResult = 'testResult';
+
+		var emitCalled = false;
 
 		var mock = {
 
-			_fileName: testFileName,
-			_pathToLogs: testPathToLogs,
-			_hasEventsInFile: true,
+			activeFlushOps: 5,
 
-			_getLogFileName: function() {
-				return 'newFileName.log';
-			},
-
-			startIdleFlushMonitor: function() {
-				startIdleFlushMonitor = true;
-			},
-
-			_file: {
-
-				setupFile: function(fileName) {
-					assert(_.isString(fileName));
-					assert(fileName !== testFileName);
-					fileSetupFileCalled = true;
-				}
-
-			},
-
-			_sendToS3: function(fileName) {
-				assert(fileName === testFileName);
-				sendToS3Called = true;
+			emit: function(type, err, result, sql, start, bulkInsert) {
+				assert(type === 'flush');
+				assert(err === testError);
+				assert(result === testResult);
+				assert(start === testStart);
+				assert(bulkInsert === mock);
+				emitCalled = true;
 			}
+		};
 
-		}
+		RedshiftBulkInsert.prototype._decrimentActiveFlushOpsAndEmitFlushEvent.bind(mock)(testStart, testError, testResult);
 
-		RedshiftBulkInsert.prototype.flush.bind(mock)();
-
-		assert(mock._fileName !== testFileName);
-
-		assert(fileSetupFileCalled);
-		//assert(sendToS3Called);
-		assert(startIdleFlushMonitor);
+		assert(mock.activeFlushOps === 4);
+		assert(emitCalled);
 
 	});
 
