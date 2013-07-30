@@ -88,6 +88,17 @@ describe('RedshiftBulkInsert', function() {
 
 		});
 
+		it ('shit', function() {
+			var testValue = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; iOpus-I-M; GTB6.6; 001|Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)';
+			var result = RedshiftBulkInsert.prototype._escapeValue(testValue);
+			assert(result === 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; iOpus-I-M; GTB6.6; 001\\|Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; .NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)');
+
+			var testValue = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; 001|Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; (R1 1.6); .NET CLR 1.1.4322; .NET CLR 2.0.50727; SRS_IT_E8790272B376545A36AD92)';
+			var result = RedshiftBulkInsert.prototype._escapeValue(testValue);
+			assert(result === 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; 001\\|Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; (R1 1.6); .NET CLR 1.1.4322; .NET CLR 2.0.50727; SRS_IT_E8790272B376545A36AD92)');
+
+		});
+
 	});
 
 	it('insert', function() {
