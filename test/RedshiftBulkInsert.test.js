@@ -7,6 +7,7 @@ describe('RedshiftBulkInsert', function() {
 	it('contructor', function() {
 
 		var startIdleFlushMonitorCalled = false;
+		var createS3Called = false;
 
 		var options = {
 			datastore: 'testDatastore',
@@ -26,7 +27,7 @@ describe('RedshiftBulkInsert', function() {
 			},
 
 			_createS3: function() {
-
+				createS3Called = true;
 			},
 
 			startIdleFlushMonitor: function() {
@@ -37,6 +38,14 @@ describe('RedshiftBulkInsert', function() {
 		RedshiftBulkInsert.bind(mock)(options);
 
 		assert(startIdleFlushMonitorCalled);
+		assert(createS3Called);
+
+		assert(mock._logger !== undefined);
+		assert(mock._fs !== undefined);
+		assert(mock._aws !== undefined);
+		assert(mock._date !== undefined);
+		assert(mock._pid !== undefined);
+		assert(mock._suffix !== undefined);
 
 		assert(mock._datastore === options.datastore);
 		assert(mock._tableName === options.tableName);
@@ -104,11 +113,14 @@ describe('RedshiftBulkInsert', function() {
 	it('insert', function() {
 
 		var rowToLineCalled = false;
-		var fileWrite = false;
+		var fileWriteCalled = false;
+		var checkThresholdCalled = false;
 
 		var testRow = 'testRow';
 
 		var mock = {
+
+			_numberOfEventsInFile: 7,
 
 			_rowToLine: function(row) {
 				assert(testRow === row);
@@ -120,20 +132,131 @@ describe('RedshiftBulkInsert', function() {
 
 				write: function(line) {
 					assert(line === testRow + '\n');
-					fileWrite = true;
+					fileWriteCalled = true;
 				}
 
+			},
+
+			_checkThreshold: function() {
+				checkThresholdCalled = true;
 			}
 		};
 
 		RedshiftBulkInsert.prototype.insert.bind(mock)(testRow);
 
+		assert(mock._numberOfEventsInFile === 8);
 		assert(rowToLineCalled);
-		assert(fileWrite);
+		assert(fileWriteCalled);
+		assert(checkThresholdCalled);
 
 	});
 
-	describe.skip('_onSendedCopyToRedshift', function() {
+	describe('_checkThreshold', function() {
+
+		it('calls flush when _numberOfEventsInFile is greater or equal to _threshold', function() {
+
+			var flushCalled = false;
+
+			var mock = {
+
+				_numberOfEventsInFile: 20,
+				_threshold: 20,
+
+				ref: setTimeout(function() {
+					throw new Error;
+				}, 0),
+
+				flush: function() {
+					flushCalled = true;
+				}
+			};
+
+			RedshiftBulkInsert.prototype._checkThreshold.call(mock);
+
+			assert(flushCalled);
+
+		});
+
+		it('do nothing when _numberOfEventsInFile is less then _threshold', function() {
+
+			var flushCalled = false;
+
+			var mock = {
+				_numberOfEventsInFile: 5,
+				_threshold: 20,
+			};
+
+			RedshiftBulkInsert.prototype._checkThreshold.call(mock);
+
+		});
+
+	});
+
+	describe('_onSentCopyToRedshift', function() {
+
+		it('on error', function() {
+
+			var testError = 'testError';
+			var testStart = 5556765;
+			var testResult = 'fgfgfgdsdsd';
+
+			var decrimentActiveFlushOpsAndEmitFlushEventCalled = false;
+			var loggerErrorCalled = true;
+
+			var mock = {
+
+				_logger: {
+
+					error: function(err) {
+						assert(err === testError);
+						loggerErrorCalled = true;
+					}
+
+				},
+
+				_decrimentActiveFlushOpsAndEmitFlushEvent: function(start, err, result) {
+					assert(start === testStart);
+					assert(err === testError);
+					assert(result === testResult);
+					decrimentActiveFlushOpsAndEmitFlushEventCalled = true;
+				},
+
+			};
+
+			RedshiftBulkInsert.prototype._onSentCopyToRedshift.call(mock, testStart, testError, testResult);
+
+			assert(decrimentActiveFlushOpsAndEmitFlushEventCalled);
+			assert(loggerErrorCalled);
+
+		});
+
+		it('on success', function() {
+
+			var testError = null;
+			var testStart = 5556765;
+			var testResult = 'fgfgfgdsdsd';
+
+			var decrimentActiveFlushOpsAndEmitFlushEventCalled = false;
+			var loggerErrorCalled = true;
+
+			var mock = {
+
+				_decrimentActiveFlushOpsAndEmitFlushEvent: function(start, err, result) {
+					assert(start === testStart);
+					assert(err === testError);
+					assert(result === testResult);
+					decrimentActiveFlushOpsAndEmitFlushEventCalled = true;
+				},
+
+			};
+
+			RedshiftBulkInsert.prototype._onSentCopyToRedshift.call(mock, testStart, testError, testResult);
+
+			assert(decrimentActiveFlushOpsAndEmitFlushEventCalled);
+			assert(loggerErrorCalled);
+
+		});
+
 	});
 
 	it('_getCopyQuery', function() {
@@ -148,7 +271,7 @@ describe('RedshiftBulkInsert', function() {
 			_awsSecretAccessKey: 'testAwsSecretAccessKey'
 		};
 
-		var expected = "COPY testTable (xxx, yyy) FROM 's3://testBucket/34565467567.log' CREDENTIALS 'aws_access_key_id=testAwsAccessKeyId;aws_secret_access_key=testAwsSecretAccessKey'";
+		var expected = "COPY testTable (xxx, yyy) FROM 's3://testBucket/34565467567.log' CREDENTIALS 'aws_access_key_id=testAwsAccessKeyId;aws_secret_access_key=testAwsSecretAccessKey' ESCAPE";
 
 		var result = RedshiftBulkInsert.prototype._getCopyQuery.bind(mock)(fileName);
 
@@ -161,24 +284,35 @@ describe('RedshiftBulkInsert', function() {
 		it('calls _decrimentActiveFlushOpsAndEmitFlushEvent when error is passed', function() {
 
 			var fileName = 'testFileName.log';
-			var err = 'Test error';
+			var testError = 'Test error';
 			var testStart = 678966745645;
 
 			var decrimentActiveFlushOpsAndEmitFlushEventCalled = false;
+			var loggerErrorCalled = false;
 
 			var mock = {
 
+				_logger: {
+
+					error: function(err) {
+						assert(err === testError);
+						loggerErrorCalled = true;
+					}
+
+				},
+
 				_decrimentActiveFlushOpsAndEmitFlushEvent: function(start, err, result) {
 					assert(start === testStart);
-					assert(err === err);
+					assert(err === testError);
 					decrimentActiveFlushOpsAndEmitFlushEventCalled = true;
 				}
 
 			};
 
-			RedshiftBulkInsert.prototype._onSentToS3.bind(mock)(fileName, testStart, err);
+			RedshiftBulkInsert.prototype._onSentToS3.bind(mock)(fileName, testStart, testError);
 
 			assert(decrimentActiveFlushOpsAndEmitFlushEventCalled);
+			assert(loggerErrorCalled);
 
 		});
 
@@ -186,15 +320,23 @@ describe('RedshiftBulkInsert', function() {
 
 			var testFileName = 'testFileName.log';
 			var testCopyQuery = 'testCopyQuery';
+			var testStart = 4564564567;
 
 			var onSentCopyToRedshiftCalled = false;
 			var datastoreQueryCalled = false;
 			var getCopyQueryCalled = false;
+			var removeLogFileCalled = false;
 
 			var mock = {
 
 				_onSentCopyToRedshift: function() {
 					onSentCopyToRedshiftCalled = true;
+				},
+
+				_removeLogFile: function(fileName, start) {
+					assert(fileName === testFileName);
+					assert(start === testStart);
+					removeLogFileCalled = true;
 				},
 
 				_datastore: {
@@ -214,9 +356,10 @@ describe('RedshiftBulkInsert', function() {
 				}
 			};
 
-			RedshiftBulkInsert.prototype._onSentToS3.bind(mock)(testFileName);
+			RedshiftBulkInsert.prototype._onSentToS3.bind(mock)(testFileName, testStart);
 
 			assert(onSentCopyToRedshiftCalled);
+			assert(removeLogFileCalled);
 			assert(datastoreQueryCalled);
 			assert(getCopyQueryCalled);
 
@@ -233,8 +376,18 @@ describe('RedshiftBulkInsert', function() {
 			var testStart = 4353457;
 
 			var decrimentActiveFlushOpsAndEmitFlushEventCalled = false;
+			var loggerErrorCalled = false;
 
 			var mock = {
+
+				_logger: {
+
+					error: function(err) {
+						assert(err === testErr);
+						loggerErrorCalled = true;
+					}
+
+				},
 
 				_decrimentActiveFlushOpsAndEmitFlushEvent: function(start, err, result) {
 					assert(testStart === start);
@@ -247,6 +400,7 @@ describe('RedshiftBulkInsert', function() {
 			RedshiftBulkInsert.prototype._sendToS3.bind(mock)(testFileName, testStart, testErr);
 
 			assert(decrimentActiveFlushOpsAndEmitFlushEventCalled);
+			assert(loggerErrorCalled);
 
 		});
 
@@ -416,5 +570,141 @@ describe('RedshiftBulkInsert', function() {
 		assert(emitCalled);
 
 	});
+
+	it('_removeLogFile', function() {
+
+		var testFileName = 'testFileName';
+		var testStart = 45646564;
+
+		var fsUnlinkCalled = true;
+		var decrimentActiveFlushOpsAndEmitFlushEventCalled = true;
+
+		var mock = {
+
+			_pathToLogs: 'testPathToLogs',
+
+			_fs: {
+
+				unlink: function(path, callback) {
+					assert(path === 'testPathToLogs/testFileName');
+					callback(null);
+					fsUnlinkCalled = true;
+				}
+
+			},
+
+			_decrimentActiveFlushOpsAndEmitFlushEvent: function(start, err, data) {
+				assert(start === testStart);
+				assert(err === null);
+				decrimentActiveFlushOpsAndEmitFlushEventCalled = true;
+			}
+		};
+
+		RedshiftBulkInsert.prototype._removeLogFile.bind(mock)(testFileName, testStart);
+
+		assert(fsUnlinkCalled);
+		assert(decrimentActiveFlushOpsAndEmitFlushEventCalled);
+
+	});
+
+	it('startIdleFlushMonitor', function(done) {
+
+		var testIdleFlushPeriod = 10; // ms
+		var started = Date.now();
+
+		var mock = {
+
+			_idleFlushPeriod: testIdleFlushPeriod,
+
+			flush: function() {
+				assert(Date.now() - started < testIdleFlushPeriod + 10);
+				done();
+			}
+		}
+
+		RedshiftBulkInsert.prototype.startIdleFlushMonitor.bind(mock)();
+
+	});
+
+	it('close', function() {
+
+		var fileEndCalled = false;
+
+		var mock = {
+
+			ref: setTimeout(function() {
+				throw new Error();
+			}, 0),
+
+			_file: {
+				end: function() {
+					fileEndCalled = true;
+				}
+			}
+		};
+
+		RedshiftBulkInsert.prototype.close.bind(mock)();
+
+		assert(fileEndCalled);
+
+	});
+
+	it('_createS3', function() {
+
+		var testAwsRegion = 'testAwsRegion';
+		var testAwsAccessKeyId = 'testAwsAccessKeyId';
+		var testAwsSecretAccessKey = 'testAwsSecretAccessKey';
+
+		var expectedOptions = {
+			region: testAwsRegion,
+			accessKeyId: testAwsAccessKeyId,
+			secretAccessKey: testAwsSecretAccessKey
+		}
+
+		var S3Called = false;
+
+		var mock = {
+
+			_awsRegion: testAwsRegion,
+			_awsAccessKeyId: testAwsAccessKeyId,
+			_awsSecretAccessKey: testAwsSecretAccessKey,
+
+			_aws: {
+
+				S3: function(options) {
+					assert.deepEqual(options, expectedOptions);
+					S3Called = true;
+				}
+
+			}
+
+		}
+
+		var result = RedshiftBulkInsert.prototype._createS3.call(mock);
+
+		assert(S3Called);
+
+	});
+
+	it('_getLogFileName', function() {
+
+		var mock = {
+			_suffix: '.log',
+			_tableName: 'testTableName',
+			_pid: 1234,
+			_date: {
+
+				now: function() {
+					return 9876;
+				}
+
+			}
+		};
+
+		var result = RedshiftBulkInsert.prototype._getLogFileName.call(mock);
+
+		assert(result === 'testTableName_9876_1234.log');
+
+	})
 
 });
