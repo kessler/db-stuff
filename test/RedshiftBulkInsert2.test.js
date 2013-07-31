@@ -209,6 +209,13 @@ function MockRedshiftBulkInsert() {
 			callback(null);
 		}
 	};
+
+	this._deleteLocalFile = function(flushOp) {
+		return function(callback) {
+			self._deleteLocalFile = ++calls
+			callback(null);
+		}
+	};
 }
 
 function MockS3() {
