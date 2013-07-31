@@ -15,9 +15,9 @@ module.exports.Datastore = {
 };
 //end backward compatibility:
 
-module.exports.Insert = require('./lib/Insert');
-module.exports.BulkInsert = require('./lib/BulkInsert');
-module.exports.RedshiftBulkInsert = require('./lib/RedshiftBulkInsert');
+module.exports.Insert = require('./lib/Insert.js');
+module.exports.BulkInsert = require('./lib/BulkInsert.js');
+module.exports.RedshiftBulkInsert = require('./lib/RedshiftBulkInsert2.js');
 
 /*
 	factory for creating datastores.

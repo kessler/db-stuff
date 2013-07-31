@@ -1,6 +1,6 @@
 {
   "name": "db-stuff",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "description": "db-stuff",
   "main": "index.js",
   "author": {
@@ -13,7 +13,8 @@
     "mysql": "2.0.0-alpha8",
     "aws-sdk": "~1.4.1",
     "underscore": "~1.5.1",
-    "simple-file-writer": "~1.0.3"
+    "simple-file-writer": "~1.0.4",
+    "node-uuid": "~1.4.0"
   },
   "repository": {
     "type": "git",
