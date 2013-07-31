@@ -1,6 +1,5 @@
 var RedshiftBulkInsert = require('../lib/RedshiftBulkInsert2.js');
 var assert = require('assert');
-var SimpleFileWriter = require('simple-file-writer');
 var fs = require('fs');
 var path = require('path');
 var EventEmitter = require('events').EventEmitter;
@@ -74,7 +73,8 @@ describe('RedshiftBulkInsert', function() {
 		var mock = new MockRedshiftBulkInsert();
 		var op = new RedshiftBulkInsert.FlushOperation(mock, 'test');
 
-		mock._inserts = 1;
+		mock._threshold = 3;
+		mock._inserts = 3;
 
 		mock.on('flush', function(err, results, sql, start, bi) {
 			assert.strictEqual(mock.activeFlushOps, 0);
@@ -96,7 +96,6 @@ describe('RedshiftBulkInsert', function() {
 	it('flushes when a predetemined amount of inserts is done', function (done) {
 		this.timeout(20000);
 
-		
 		var datastore = new MockDatastore();
 		var s3 = new MockS3();
 		var opts = _u.clone(options);
@@ -123,7 +122,7 @@ describe('RedshiftBulkInsert', function() {
 			
 			setTimeout(function() {
 
-				assert.strictEqual(flushCalls, 1, 'only one flush should have occurred by now - triggered by threshold');
+				assert.strictEqual(flushCalls, 1, 'only one flush should have occurred by now - triggered by threshold - but there were ' + flushCalls + ' flush calls');
 				
 				setTimeout(function () {
 	
