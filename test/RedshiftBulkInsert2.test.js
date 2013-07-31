@@ -73,12 +73,8 @@ describe('RedshiftBulkInsert', function() {
 		var mock = new MockRedshiftBulkInsert();
 		var op = new RedshiftBulkInsert.FlushOperation(mock, 'test');
 
-		mock._threshold = 3;
-		mock._inserts = 3;
-
 		mock.on('flush', function(err, results, sql, start, bi) {
-			assert.strictEqual(mock.activeFlushOps, 0);
-			assert.strictEqual(mock._inserts, 0);
+			assert.strictEqual(mock.activeFlushOps, 0);			
 			assert.strictEqual(start, op._start);
 			assert.ok(mock._readFileCalled, 1);
 			assert.ok(mock._uploadFileToS3Called, 2);
@@ -133,6 +129,7 @@ describe('RedshiftBulkInsert', function() {
 						assert.strictEqual(rsbl._inserts, 1);						
 
 						setTimeout(function () {
+							
 							assert.strictEqual(rsbl._inserts, 0);
 							assert.strictEqual(flushCalls, 2, 'two flushes were expected by now');
 							done();
