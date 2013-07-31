@@ -33,9 +33,8 @@ describe('RedshiftBulkInsert', function() {
 	//after(cleanup);
 
 	it('writes stuff directly to a file', function(done) {
-		var sfw = new SimpleFileWriter();
-
-		var rsbl = new RedshiftBulkInsert(null, sfw, options, awsOptions);
+		
+		var rsbl = new RedshiftBulkInsert(null, options, awsOptions);
 
 		rsbl.insert(testRow, function(err) { 
 			if (err)
@@ -52,9 +51,8 @@ describe('RedshiftBulkInsert', function() {
 	});	
 
 	it('writes each insert in its own row', function (done) {
-		var sfw = new SimpleFileWriter();
-
-		var rsbl = new RedshiftBulkInsert(null, sfw, options, awsOptions);
+		
+		var rsbl = new RedshiftBulkInsert(null, options, awsOptions);
 
 		rsbl.insert(testRow, function(err) { 
 			if (err)
@@ -98,14 +96,14 @@ describe('RedshiftBulkInsert', function() {
 	it('flushes when a predetemined amount of inserts is done', function (done) {
 		this.timeout(20000);
 
-		var sfw = new SimpleFileWriter();
+		
 		var datastore = new MockDatastore();
 		var s3 = new MockS3();
 		var opts = _u.clone(options);
 		
 		opts.idleFlushPeriod = 1000;
 
-		var rsbl = new RedshiftBulkInsert(datastore, sfw, opts, awsOptions);
+		var rsbl = new RedshiftBulkInsert(datastore, opts, awsOptions);
 
 		rsbl._s3 = s3;		
 
@@ -152,11 +150,11 @@ describe('RedshiftBulkInsert', function() {
 	});
 
 	it('flushes when a predetermined period of time passes and inserts didnt trigger a flush by quantity', function(done) {
-		var sfw = new SimpleFileWriter();
+		
 		var datastore = new MockDatastore();
 		var s3 = new MockS3();
 
-		var rsbl = new RedshiftBulkInsert(datastore, sfw, options, awsOptions);
+		var rsbl = new RedshiftBulkInsert(datastore, options, awsOptions);
 
 		rsbl._s3 = s3;		
 
