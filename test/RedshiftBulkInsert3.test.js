@@ -138,7 +138,7 @@ function MockS3() {
 	var self = this;
 	this.putObject = function(opts, callback) {								
 		self.opts = opts;
-		callback();
+		callback(null, {});
 	}
 }
 
