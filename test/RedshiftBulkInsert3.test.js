@@ -79,7 +79,10 @@ describe('RedshiftBulkInsert', function() {
 
 		var flushCalls = 0;
 
-		rsbl.on('flush', function(err, results, sql, start, bi) {			
+		rsbl.on('flush', function(err, results, sql, start, bi) {		
+			assert.ok(err === null);
+			assert.ok(sql);
+			console.log(sql)
 			flushCalls++;
 		});
 
