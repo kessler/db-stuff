@@ -17,7 +17,7 @@ module.exports.Datastore = {
 
 module.exports.Insert = require('./lib/Insert.js');
 module.exports.BulkInsert = require('./lib/BulkInsert.js');
-module.exports.RedshiftBulkInsert = require('./lib/RedshiftBulkInsert2.js');
+module.exports.RedshiftBulkInsert = require('./lib/RedshiftBulkInsert3.js');
 
 /*
 	factory for creating datastores.
