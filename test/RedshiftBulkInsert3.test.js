@@ -140,6 +140,11 @@ function MockS3() {
 		self.opts = opts;
 		callback(null, {});
 	}
+
+	this.deleteObject = function(opts, callback) {								
+		self.deleteOpts = opts;
+		callback(null, {});
+	}
 }
 
 
@@ -148,6 +153,6 @@ function MockDatastore() {
 	var queries = this.queries = [];
 	this.query = function(sql, callback) {
 		queries.push(sql);
-		callback(null);
+		callback(null, {});
 	}
 }
