@@ -1,6 +1,6 @@
 {
   "name": "db-stuff",
-  "version": "0.0.54",
+  "version": "0.0.55",
   "description": "db-stuff",
   "main": "index.js",
   "author": {
@@ -19,15 +19,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "http://github.com/kessler-y/db-stuff.git"
+    "url": "http://github.com/kessler/db-stuff.git"
   },
   "bugs": {
-    "url": "http://github.com/kessler-y/db-stuff/issues"
+    "url": "http://github.com/kessler/db-stuff/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://raw.github.com/kessler-y/db-stuff/master/LICENSE"
+      "url": "https://raw.github.com/kessler/db-stuff/master/LICENSE"
     }
   ],
   "engine": {
