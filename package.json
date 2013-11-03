@@ -1,6 +1,6 @@
 {
   "name": "db-stuff",
-  "version": "0.0.55",
+  "version": "0.0.56",
   "description": "db-stuff",
   "main": "index.js",
   "author": {
@@ -15,7 +15,8 @@
     "underscore": "~1.5.1",
     "simple-file-writer": "~1.0.4",
     "node-uuid": "~1.4.0",
-    "ip": "~0.1.0"
+    "ip": "~0.1.0",
+    "knox": "~0.8.6"
   },
   "repository": {
     "type": "git",
