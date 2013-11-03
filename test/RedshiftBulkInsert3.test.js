@@ -23,8 +23,7 @@ var awsOptions = {
 	region: 'us-standard',
 	accessKeyId: '2',
 	secretAccessKey: '3',
-	bucket: 'testBucket',
-	keyPrefix: 'testKeyPrefix/'
+	bucket: 'rtb-redshift/bulkinsert'
 };
 
 describe('RedshiftBulkInsert', function() {
