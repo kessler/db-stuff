@@ -16,14 +16,15 @@ var options = {
 	tableName: 'liga',
 	threshold: 3,
 	idleFlushPeriod: 100000,
-	fields: ['a', 'b']
+	fields: ['a', 'b'],
 };
 
 var awsOptions = {
 	region: 'us-standard',
 	accessKeyId: '2',
 	secretAccessKey: '3',
-	bucket: 'testBucket'
+	bucket: 'testBucket',
+	keyPrefix: 'testKeyPrefix/'
 };
 
 describe('RedshiftBulkInsert', function() {
