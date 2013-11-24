@@ -20,10 +20,10 @@ var options = {
 };
 
 var awsOptions = {
-	region: '1',
+	region: 'us-standard',
 	accessKeyId: '2',
 	secretAccessKey: '3',
-	bucket: '4'
+	bucket: 'asd'
 };
 
 describe('RedshiftBulkInsert', function() {
@@ -136,7 +136,7 @@ describe('RedshiftBulkInsert', function() {
 			uploadToS3(function() {
 
 				var expected = generateExpected(2, rsbl.delimiter);
-				var actual = mockS3.opts.Body.toString('utf8');
+				var actual = mockS3.buffer.toString('utf8');
 
 				assert.strictEqual(actual, expected);
 
@@ -228,6 +228,13 @@ function MockS3() {
 		self.deleteOpts = opts;
 		callback(null, {});
 	}
+
+	this.putBuffer = function(buffer, key, callback) {
+		this.buffer = buffer;
+		this.key = key;
+		callback(null, { statusCode: 200 });
+	}
+
 }
 
 
