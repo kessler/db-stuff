@@ -19,106 +19,189 @@ var options = {
 	fields: ['a', 'b']
 };
 
-var awsOptions = { 
-	region: '1', 
-	accessKeyId: '2', 
+var awsOptions = {
+	region: '1',
+	accessKeyId: '2',
 	secretAccessKey: '3',
 	bucket: '4'
 };
 
 describe('RedshiftBulkInsert', function() {
-	
-	it('inserts are saved in a memory buffer', function() {
-		
-		var rsbl = new RedshiftBulkInsert(null, options, awsOptions);
 
-		rsbl.insert(testRow);
-		assert.strictEqual(rsbl._currentBufferLength, new Buffer(generateExpected(1, rsbl.delimiter), 'utf8').length);
-		assert.strictEqual(rsbl._buffer.length, 1);
+	describe('batch inserts', function () {
 
-	});	
+	});
 
-	it('uploading to s3 will concatenate all the buffers', function (done) {
+	describe('manage the idle flush monitor', function () {
 
-		var rsbl = new RedshiftBulkInsert(null, options, awsOptions);
-		var mockS3 = new MockS3();
-		rsbl._s3 = mockS3;
+		it('starts the monitor', function (done) {
+			var flushCalled = false;
 
-		rsbl.insert(testRow);
-		rsbl.insert(testRow);
+			var mock = {
+				_idleFlushPeriod: 1000,
+				flush: function () {
+					flushCalled = true;
+				}
+			};
 
-		// simulate a real flush call
-		var uploadToS3 = rsbl._uploadToS3({
-			filename: '999',
-			buffer: rsbl._buffer
+			RedshiftBulkInsert.prototype._startIdleFlushMonitor.call(mock);
+
+			assert.ok(typeof(mock._timeoutRef) === 'object');
+
+			setTimeout(function () {
+				assert.strictEqual(flushCalled, false, 'flush should not have been called yet');
+
+				setTimeout(function () {
+					assert.strictEqual(flushCalled, true, 'flush should not have been called by now');
+					done();
+				}, 400);
+			}, 800);
 		});
 
-		uploadToS3(function() {			
+		it('does not restart it if it was already started', function () {
 
-			var expected = generateExpected(2, rsbl.delimiter);
-			var actual = mockS3.opts.Body.toString('utf8'); 
+			var mock = {
+				_idleFlushPeriod: 1000,
+				flush: function () {}
+			};
 
-			assert.strictEqual(actual, expected);
+			RedshiftBulkInsert.prototype._startIdleFlushMonitor.call(mock);
 
-			done()
+			assert.strictEqual(typeof(mock._timeoutRef), 'object');
+
+			var expectedRef = mock._timeoutRef;
+
+			RedshiftBulkInsert.prototype._startIdleFlushMonitor.call(mock);
+
+			assert.strictEqual(mock._timeoutRef, expectedRef);
+
+		});
+
+		it('stops the monitor', function () {
+			var mock = {
+				_timeoutRef: {}
+			};
+
+			RedshiftBulkInsert.prototype._stopIdleFlushMonitor.call(mock);
+
+			assert.strictEqual(mock._timeoutRef, undefined);
+		});
+
+		it('stops the monitor when a flush operation occurs', function () {
+			var stopCalled = false;
+			var mock = {
+				_idleFlushPeriod: 1000,
+				flush: function () { return {}; },
+				_buffer: [],
+				_threshold: 1,
+				_stopIdleFlushMonitor: function () {
+					stopCalled = true;
+				},
+				_startIdleFlushMonitor: function () {},
+				_escapeValue: function(v) { return v; }
+			};
+
+			RedshiftBulkInsert.prototype.insert.call(mock, ['123']);
+
+			assert.strictEqual(stopCalled, true);
 		});
 	});
 
-	it('flushes when a predetemined amount of inserts is done', function (done) {
-		this.timeout(7000);
+	describe('old tests', function () {
+		it('inserts are saved in a memory buffer', function() {
 
-		var datastore = new MockDatastore();
-		var s3 = new MockS3();
-		var opts = _u.clone(options);
-		
-		opts.idleFlushPeriod = 1000;
+			var rsbl = new RedshiftBulkInsert(null, options, awsOptions);
 
-		var rsbl = new RedshiftBulkInsert(datastore, opts, awsOptions);
+			rsbl.insert(testRow);
+			assert.strictEqual(rsbl._currentBufferLength, new Buffer(generateExpected(1, rsbl.delimiter), 'utf8').length);
+			assert.strictEqual(rsbl._buffer.length, 1);
 
-		rsbl._s3 = s3;		
-
-		var flushCalls = 0;
-
-		rsbl.on('flush', function(err, results, sql, start, bi) {		
-			assert.ok(err === null);
-			assert.ok(sql);
-			console.log(sql)
-			flushCalls++;
 		});
 
-		setTimeout(function () {
+		it('uploading to s3 will concatenate all the buffers', function (done) {
+
+			var rsbl = new RedshiftBulkInsert(null, options, awsOptions);
+			var mockS3 = new MockS3();
+			rsbl._s3 = mockS3;
 
 			rsbl.insert(testRow);
 			rsbl.insert(testRow);
-			rsbl.insert(testRow);
-			//assert.strictEqual(rsbl._timeoutRef, undefined);
-			
-			setTimeout(function() {
 
-				assert.strictEqual(flushCalls, 1, 'only one flush should have occurred by now - triggered by threshold - but there were ' + flushCalls + ' flush calls');
-				
-				setTimeout(function () {
-	
-					assert.strictEqual(flushCalls, 1, 'although flush idle time passed, no inserts were made - so only flush should have occurred by now');
+			// simulate a real flush call
+			var uploadToS3 = rsbl._uploadToS3({
+				filename: '999',
+				buffer: rsbl._buffer
+			});
 
-					rsbl.insert(testRow);
-					assert.strictEqual(rsbl._buffer.length, 1);						
+			uploadToS3(function() {
+
+				var expected = generateExpected(2, rsbl.delimiter);
+				var actual = mockS3.opts.Body.toString('utf8');
+
+				assert.strictEqual(actual, expected);
+
+				done()
+			});
+		});
+
+
+		it('flushes when a predetemined amount of inserts are executed', function (done) {
+			this.timeout(7000);
+
+			var datastore = new MockDatastore();
+			var s3 = new MockS3();
+			var opts = _u.clone(options);
+
+			opts.idleFlushPeriod = 1000;
+
+			var rsbl = new RedshiftBulkInsert(datastore, opts, awsOptions);
+
+			rsbl._s3 = s3;
+
+			var flushCalls = 0;
+
+			rsbl.on('flush', function(err, results, sql, start, bi) {
+				assert.ok(err === null);
+				assert.ok(sql);
+				console.log(sql)
+				flushCalls++;
+			});
+
+			setTimeout(function () {
+
+				rsbl.insert(testRow);
+				rsbl.insert(testRow);
+				rsbl.insert(testRow);
+				//assert.strictEqual(rsbl._timeoutRef, undefined);
+
+				setTimeout(function() {
+
+					assert.strictEqual(flushCalls, 1, 'only one flush should have occurred by now - triggered by threshold - but there were ' + flushCalls + ' flush calls');
 
 					setTimeout(function () {
-						
-						assert.strictEqual(flushCalls, 2, 'two flushes were expected by now');
-						done();
+
+						assert.strictEqual(flushCalls, 1, 'although flush idle time passed, no inserts were made - so only flush should have occurred by now');
+
+						rsbl.insert(testRow);
+						assert.strictEqual(rsbl._buffer.length, 1);
+
+						setTimeout(function () {
+
+							assert.strictEqual(flushCalls, 2, 'two flushes were expected by now');
+							done();
+						}, 1100);
+
 					}, 1100);
-					
+
 				}, 1100);
 
-			}, 1100);
+			}, 500);
 
-		}, 500);
-		
+		});
 	});
 
-});	
+
+});
 
 function generateExpected(rows, delimiter) {
 	var result = '';
@@ -129,19 +212,19 @@ function generateExpected(rows, delimiter) {
 		expected += '\n';
 		result += expected;
 	}
-	
+
 	return result;
 }
 
 
 function MockS3() {
 	var self = this;
-	this.putObject = function(opts, callback) {								
+	this.putObject = function(opts, callback) {
 		self.opts = opts;
 		callback(null, {});
 	}
 
-	this.deleteObject = function(opts, callback) {								
+	this.deleteObject = function(opts, callback) {
 		self.deleteOpts = opts;
 		callback(null, {});
 	}
