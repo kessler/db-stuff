@@ -1,3 +1,12 @@
+## Database abstraction
+Attempt to provide a unified low level interface to various databases. Currently supports:
+
+1. MySql
+2. PostgreSql
+
+## Special Amazon Redshift tools
+TBD
+
 ```
 var dbStuff = require('db-stuff');
 
