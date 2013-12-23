@@ -1,5 +1,3 @@
-TODO: complete transformation from vows to mocha
-
 ```
 var dbStuff = require('db-stuff');
 
