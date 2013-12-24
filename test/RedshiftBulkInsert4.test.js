@@ -28,6 +28,7 @@ var awsOptions = {
 };
 
 var EXPECTED_FILENAME = 'lala.log';
+var EXPECTED_KEY = 'test/' + EXPECTED_FILENAME;
 var EXPECTED_COPY_QUERY = 'copy 123';
 
 function createMock(threshold) {
@@ -35,28 +36,49 @@ function createMock(threshold) {
 
 	mock.dummy = new EventEmitter();
 	mock.dummy.start = function () {};
-	mock.createMethod('_escapeValue', { returnValue: function(val) { return val.toString(); }});
+	mock.createMethod('_escapeValue', undefined, { dynamicValue: function(val) { return val.toString(); }});
 	mock.createMethod('_startIdleFlushMonitor');
 	mock.createMethod('_stopIdleFlushMonitor');
-	mock.createMethod('flush', { returnValue: mock.dummy });
-	mock.createMethod('_generateFilename', { returnValue: EXPECTED_FILENAME });
-	mock.createMethod('_generateCopyQuery', { returnValue: EXPECTED_COPY_QUERY });
-	mock.createMethod('_newFlushOperation', { returnValue: mock.dummy });
-	mock.createMethod('_uuid', { returnValue: '123' });
-	mock.createMethod('_now', { returnValue: 'now' });
+	mock.createMethod('flush', mock.dummy);
+	mock.createMethod('_generateFilename', EXPECTED_FILENAME);
+	mock.createMethod('_generateCopyQuery', EXPECTED_COPY_QUERY);
+	mock.createMethod('_generateKey', EXPECTED_KEY);
+	mock.createMethod('_newFlushOperation', mock.dummy);
+	mock.createMethod('_uuid', '123');
+	mock.createMethod('_now', 'now');
 
-	mock.createProperty('_fields', { initialValue: [ 'a', 'b' ] });
-	mock.createProperty('_awsOptions', { initialValue: { accessKeyId: '1', secretAccessKey: '2' } });
-	mock.createProperty('_buffer', { initialValue: [] });
-	mock.createProperty('_currentBufferLength', { initialValue: 0 });
-	mock.createProperty('activeFlushOps', { initialValue: 0 });
-	mock.createProperty('delimiter', { initialValue: '|' });
-	mock.createProperty('_threshold', { initialValue: threshold });
-	mock.createProperty('_keyPrefix', { initialValue: 'prefix' });
-	mock.createProperty('_tableName', { initialValue: 'tablename' });
-	mock.createProperty('_extension', { initialValue: 'log' });
-	mock.createProperty('_pid', { initialValue: '1' });
-	mock.createProperty('_ipAddress', { initialValue: '1.1.1.1' });
+	mock.createProperty('_fields', [ 'a', 'b' ]);
+	mock.createProperty('_awsOptions', { accessKeyId: '1', secretAccessKey: '2' });
+	mock.createProperty('_buffer', []);
+	mock.createProperty('_currentBufferLength', 0);
+	mock.createProperty('activeFlushOps', 0);
+	mock.createProperty('delimiter', '|');
+	mock.createProperty('_threshold', threshold);
+	mock.createProperty('_keyPrefix', 'prefix');
+	mock.createProperty('_tableName', 'tablename');
+	mock.createProperty('_extension', 'log');
+	mock.createProperty('_pid', '1');
+	mock.createProperty('_ipAddress', '1.1.1.1');
+	mock.createProperty('_datastore', {});
+	mock.createProperty('_s3ClientProvider', { get: function() {
+		return {};
+	}});
+
+	return mock;
+}
+
+function createDatastoreMock() {
+	var mock = PolyMock.create();
+
+	mock.createMethod('query', undefined, { callbackArgs: [null, []] });
+
+	return mock;
+}
+
+function createS3ClientProviderMock() {
+	var mock = PolyMock.create();
+
+	mock.createMethod('get', {});
 
 	return mock;
 }
@@ -74,9 +96,18 @@ describe('RedshiftBulkInsert', function() {
 			}
 		});
 
+		it('throws an error if no s3 client provider is specified', function () {
+			try {
+				var rbl = new RedshiftBulkInsert(createDatastoreMock());
+				throw new Error('constructor should have thrown an error');
+			} catch (e) {
+				assert.strictEqual(e.message, 'missing s3 client provider');
+			}
+		});
+
 		it('throws an error if no options are specified', function () {
 			try {
-				var rbl = new RedshiftBulkInsert(dbStuff.create('DevelopmentDatastore'));
+				var rbl = new RedshiftBulkInsert(createDatastoreMock(), createS3ClientProviderMock());
 				throw new Error('constructor should have thrown an error');
 			} catch (e) {
 				assert.strictEqual(e.message, 'missing options');
@@ -85,7 +116,7 @@ describe('RedshiftBulkInsert', function() {
 
 		it('throws an error if no table name is not supplied in the options', function () {
 			try {
-				var rbl = new RedshiftBulkInsert(dbStuff.create('DevelopmentDatastore'), {});
+				var rbl = new RedshiftBulkInsert(createDatastoreMock(), createS3ClientProviderMock(),  {});
 				throw new Error('constructor should have thrown an error');
 			} catch (e) {
 				assert.strictEqual(e.message, 'missing or invalid table name');
@@ -94,7 +125,7 @@ describe('RedshiftBulkInsert', function() {
 
 		it('throws an error if fields are missing in options', function () {
 			try {
-				var rbl = new RedshiftBulkInsert(dbStuff.create('DevelopmentDatastore'), { tableName: '123' });
+				var rbl = new RedshiftBulkInsert(createDatastoreMock(), createS3ClientProviderMock(), { tableName: '123' });
 				throw new Error('constructor should have thrown an error');
 			} catch (e) {
 				assert.strictEqual(e.message, 'missing fields');
@@ -103,7 +134,7 @@ describe('RedshiftBulkInsert', function() {
 
 		it('throws an error if fields are missing in options', function () {
 			try {
-				var rbl = new RedshiftBulkInsert(dbStuff.create('DevelopmentDatastore'), { tableName: '123', fields: [] });
+				var rbl = new RedshiftBulkInsert(createDatastoreMock(), createS3ClientProviderMock(), { tableName: '123', fields: [] });
 				throw new Error('constructor should have thrown an error');
 			} catch (e) {
 				assert.strictEqual(e.message, 'missing fields');
@@ -113,7 +144,7 @@ describe('RedshiftBulkInsert', function() {
 		it('throws an error if threshold is set to 0', function () {
 				try {
 				var options = { idleFlushPeriod: 0, tableName: 'asdlj', fields: [ '1' ], threshold: 0 };
-				var rbl = new RedshiftBulkInsert(dbStuff.create('DevelopmentDatastore'), options);
+				var rbl = new RedshiftBulkInsert(createDatastoreMock(), createS3ClientProviderMock(), options);
 				throw new Error('constructor should have thrown an error');
 			} catch (e) {
 				assert.strictEqual(e.message, 'cannot set threshold to 0');
@@ -123,7 +154,7 @@ describe('RedshiftBulkInsert', function() {
 		it('throws an error if idleFlushPeriod is set to 0', function () {
 			try {
 				var options = { idleFlushPeriod: 0, tableName: 'asdlj', fields: [ '1' ], threshold: 10 };
-				var rbl = new RedshiftBulkInsert(dbStuff.create('DevelopmentDatastore'), options);
+				var rbl = new RedshiftBulkInsert(createDatastoreMock(), createS3ClientProviderMock(), options);
 				throw new Error('constructor should have thrown an error');
 			} catch (e) {
 				assert.strictEqual(e.message, 'cannot set idleFlushPeriod to 0');
@@ -306,8 +337,8 @@ describe('RedshiftBulkInsert', function() {
 		it('resets the state of the buffer', function () {
 			var mock = createMock(2);
 
-			mock.createProperty('_buffer', { initialValue: [ '1|2|3\n', '1|2|3\n' ]});
-			mock.createProperty('_currentBufferLength', { initialValue: 9999 });
+			mock.createProperty('_buffer', [ '1|2|3\n', '1|2|3\n' ]);
+			mock.createProperty('_currentBufferLength', 9999);
 
 			var flushOp = RedshiftBulkInsert.prototype.flush.call(mock.object);
 
@@ -322,18 +353,21 @@ describe('RedshiftBulkInsert', function() {
 			var expectedBuffer = [ '1|2|3\n', '1|2|3\n' ];
 			var expectedBufferLength = 9999;
 
-			mock.createProperty('_buffer', { initialValue: expectedBuffer });
-			mock.createProperty('_currentBufferLength', { initialValue: expectedBufferLength });
+			mock.createProperty('_buffer', expectedBuffer );
+			mock.createProperty('_currentBufferLength', expectedBufferLength);
 
 			var flushOp = RedshiftBulkInsert.prototype.flush.call(mock.object);
 			assert.strictEqual(flushOp, mock.dummy);
 
-			var actual = mock.invocations[mock.invocations.length - 1].arguments;
+			mock.invocations.pop();
+			mock.invocations.pop();
+
+			var actual = mock.invocations.pop().arguments;
 
 			assert.strictEqual(actual[0], expectedBuffer);
 			assert.deepEqual(actual[0], expectedBuffer);
 			assert.strictEqual(actual[1], expectedBufferLength);
-			assert.strictEqual(actual[2], EXPECTED_FILENAME);
+			assert.strictEqual(actual[2], EXPECTED_KEY);
 			assert.strictEqual(actual[3], EXPECTED_COPY_QUERY);
 		});
 
@@ -344,8 +378,8 @@ describe('RedshiftBulkInsert', function() {
 			var expectedBuffer = [ '1|2|3\n', '1|2|3\n' ];
 			var expectedBufferLength = 9999;
 
-			mock.createProperty('_buffer', { initialValue: expectedBuffer });
-			mock.createProperty('_currentBufferLength', { initialValue: expectedBufferLength });
+			mock.createProperty('_buffer', expectedBuffer);
+			mock.createProperty('_currentBufferLength', expectedBufferLength);
 
 			var flushOp = RedshiftBulkInsert.prototype.flush.call(mock.object);
 			assert.strictEqual(flushOp, mock.dummy);
@@ -370,8 +404,8 @@ describe('RedshiftBulkInsert', function() {
 			var expectedBuffer = [ '1|2|3\n', '1|2|3\n' ];
 			var expectedBufferLength = 9999;
 
-			mock.createProperty('_buffer', { initialValue: expectedBuffer });
-			mock.createProperty('_currentBufferLength', { initialValue: expectedBufferLength });
+			mock.createProperty('_buffer', expectedBuffer);
+			mock.createProperty('_currentBufferLength', expectedBufferLength);
 
 			var flushOp = RedshiftBulkInsert.prototype.flush.call(mock.object);
 			assert.strictEqual(flushOp, mock.dummy);
@@ -396,8 +430,8 @@ describe('RedshiftBulkInsert', function() {
 			var expectedBuffer = [ '1|2|3\n', '1|2|3\n' ];
 			var expectedBufferLength = 9999;
 
-			mock.createProperty('_buffer', { initialValue: expectedBuffer });
-			mock.createProperty('_currentBufferLength', { initialValue: expectedBufferLength });
+			mock.createProperty('_buffer', expectedBuffer);
+			mock.createProperty('_currentBufferLength', expectedBufferLength);
 
 			var flushOp = RedshiftBulkInsert.prototype.flush.call(mock.object);
 			assert.strictEqual(flushOp, mock.dummy);
@@ -426,15 +460,92 @@ describe('RedshiftBulkInsert', function() {
 	describe('FlushOperation', function () {
 		var topic = RedshiftBulkInsert.FlushOperation.prototype;
 
-		it('starts and executes a waterfall of async operations', function (done) {
+		function createFlushOperationMock() {
+			var mock = PolyMock.create();
 
-			var s3 = new MockS3();
-			var mock = PolyMock.create(['_uploadToS3', '_updateUploadLatency', '_executeCopyQuery', '_updateQueryLatency', 'done']);
+			mock.createProperty('key', EXPECTED_KEY);
+			mock.createProperty('copyQuery', EXPECTED_COPY_QUERY);
 
-			topic.start.call(mock.object, s3);
+			mock.b1 = new Buffer('1, 2, 3');
+			mock.b2 = new Buffer('1, 2, 3');
 
-			topic.on('done', done);
+			mock.createProperty('buffer', [mock.b1, mock.b2]);
+			mock.createProperty('bufferLength', mock.b1.length + mock.b2.length);
+
+			// creates a functor on the mock object that records invocations of returned functions
+			function special(what) {
+				var name = what + 'Functor';
+
+				mock.createMethod(name, undefined);
+
+				return function() {
+					mock.object[name].apply(mock.object, Array.prototype.slice(arguments, 0));
+				}
+			}
+
+			mock.createMethod('_uploadToS3', special('_uploadToS3'));
+			mock.createMethod('_updateUploadLatency', special('_updateUploadLatency'));
+			mock.createMethod('_updateQueryLatency', special('_updateQueryLatency'));
+			mock.createMethod('_executeCopyQuery', special('_executeCopyQuery'));
+			mock.createMethod('done');
+			mock.createMethod('emit');
+
+			return mock;
+		}
+
+		function createS3Mock() {
+			var mock = PolyMock.create();
+
+			mock.createMethod('put', undefined, { callbackArgs: [null, { statusCode: 200} ] });
+
+			return mock;
+		}
+
+		it('uploads to s3', function () {
+			var mock = createFlushOperationMock();
+			var s3mock = createS3Mock();
+
+			var functor = topic._uploadToS3.call(mock.object, s3mock.object);
+
+			// call the functor
+			functor(function(err, res) {});
+
+			assert.strictEqual(s3mock.invocations[0].method, 'put');
+			assert.deepEqual(s3mock.invocations[0].arguments[0], Buffer.concat([mock.b1, mock.b2]));
+			assert.strictEqual(s3mock.invocations[0].arguments[1], EXPECTED_KEY);
+			assert.strictEqual(typeof(s3mock.invocations[0].arguments[2]), 'function');
 		});
+
+		it('executes a copy query', function () {
+			var mock = createFlushOperationMock();
+			var datastoreMock = createDatastoreMock();
+
+			var functor = topic._executeCopyQuery.call(mock.object, datastoreMock.object);
+
+			functor('123', function(err, results) {});
+
+			assert.strictEqual(datastoreMock.invocations[0].method, 'query');
+			assert.strictEqual(datastoreMock.invocations[0].arguments[0], EXPECTED_COPY_QUERY);
+		});
+
+		it('executes an async flow when started', function () {
+			var mock = createFlushOperationMock();
+			var dsMock = createDatastoreMock();
+			var s3Mock = createS3Mock();
+
+			topic.start.call(mock.object, s3Mock.object, dsMock.object);
+
+
+			var done = mock.invocations.pop();
+			assert.strictEqual(done.method, 'done');
+
+			// setTimeout(function () {
+			// 	console.log(mock.invocations); done();
+			// }, 1000)
+
+		});
+
+
 	});
 
 	describe('old tests', function () {
@@ -519,6 +630,7 @@ describe('RedshiftBulkInsert', function() {
 
 							assert.strictEqual(flushCalls, 2, 'two flushes were expected by now');
 							done();
+
 						}, 1100);
 
 					}, 1100);
@@ -526,7 +638,6 @@ describe('RedshiftBulkInsert', function() {
 				}, 1100);
 
 			}, 500);
-
 		});
 	});
 
