@@ -384,7 +384,7 @@ describe('RedshiftBulkInsert', function() {
 			var flushOp = RedshiftBulkInsert.prototype.flush.call(mock.object);
 			assert.strictEqual(flushOp, mock.dummy);
 
-			flushOp.emit('done');
+			flushOp.emit('success');
 
 			var actual = mock.invocations.pop();
 
@@ -536,11 +536,11 @@ describe('RedshiftBulkInsert', function() {
 			topic.start.call(mock.object, s3Mock.object, dsMock.object);
 
 
-			var done = mock.invocations.pop();
-			assert.strictEqual(done.method, 'done');
+			var success = mock.invocations.pop();
+			assert.strictEqual(success.method, 'success');
 
 			// setTimeout(function () {
-			// 	console.log(mock.invocations); done();
+			// 	console.log(mock.invocations); done()
 			// }, 1000)
 
 		});
