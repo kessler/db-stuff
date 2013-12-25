@@ -1,9 +1,10 @@
 var RedshiftBulkInsert = require('../lib/RedshiftBulkInsert4.js');
+var FlushOperation = RedshiftBulkInsert.FlushOperation;
 var assert = require('assert');
 var fs = require('fs');
 var path = require('path');
 var $u = require('util');
-var _u = require('underscore');
+var _l = require('lodash');
 var PolyMock = require('polymock');
 var dbStuff = require('../index.js');
 var EventEmitter = require('events').EventEmitter;
@@ -30,6 +31,7 @@ var awsOptions = {
 var EXPECTED_FILENAME = 'lala.log';
 var EXPECTED_KEY = 'test/' + EXPECTED_FILENAME;
 var EXPECTED_COPY_QUERY = 'copy 123';
+var EXPECTED_BUCKET = 'mybucket';
 
 function createMock(threshold) {
 	var mock = PolyMock.create();
@@ -46,9 +48,12 @@ function createMock(threshold) {
 	mock.createMethod('_newFlushOperation', mock.dummy);
 	mock.createMethod('_uuid', '123');
 	mock.createMethod('_now', 'now');
+	mock.createMethod('emit');
+	mock.createMethod('retryFlush');
 
 	mock.createProperty('_fields', [ 'a', 'b' ]);
 	mock.createProperty('_awsOptions', { accessKeyId: '1', secretAccessKey: '2' });
+	mock.createProperty('_bucket', EXPECTED_BUCKET);
 	mock.createProperty('_buffer', []);
 	mock.createProperty('_currentBufferLength', 0);
 	mock.createProperty('activeFlushOps', 0);
@@ -176,7 +181,7 @@ describe('RedshiftBulkInsert', function() {
 
 		var query = RedshiftBulkInsert.prototype._generateCopyQuery.call(mock.object, '1.log');
 
-		assert.strictEqual(query, 'COPY tablename (a, b) FROM \'s3://undefined/1.log\' CREDENTIALS \'aws_access_key_id=1;aws_secret_access_key=2\' ESCAPE');
+		assert.strictEqual(query, 'COPY tablename (a, b) FROM \'s3://mybucket/1.log\' CREDENTIALS \'aws_access_key_id=1;aws_secret_access_key=2\' ESCAPE');
 	});
 
 	describe('insert', function () {
@@ -243,8 +248,9 @@ describe('RedshiftBulkInsert', function() {
 
 			var len = mock.invocations.length;
 
-			assert.strictEqual(mock.invocations[len - 3].method, '_stopIdleFlushMonitor');
-			assert.strictEqual(mock.invocations[len - 2].method, 'flush');
+			assert.strictEqual(mock.invocations[len - 4].method, '_stopIdleFlushMonitor');
+			assert.strictEqual(mock.invocations[len - 3].method, 'flush');
+			assert.strictEqual(mock.invocations[len - 2].method, 'emit');
 			assert.strictEqual(mock.invocations[len - 1].method, '_startIdleFlushMonitor');
 		});
 	});
@@ -303,23 +309,22 @@ describe('RedshiftBulkInsert', function() {
 			assert.strictEqual(mock._timeoutRef, undefined);
 		});
 
+		//TODO really bad test, improve
 		it('stops the monitor when a flush operation occurs', function () {
 			var stopCalled = false;
-			var mock = {
-				_idleFlushPeriod: 1000,
-				flush: function () { return {}; },
-				_buffer: [],
-				_threshold: 1,
-				_stopIdleFlushMonitor: function () {
-					stopCalled = true;
-				},
-				_startIdleFlushMonitor: function () {},
-				_escapeValue: function(v) { return v; }
-			};
+			var mock = createMock(1);
 
-			RedshiftBulkInsert.prototype.insert.call(mock, ['123']);
+			RedshiftBulkInsert.prototype.insert.call(mock.object, ['123']);
 
-			assert.strictEqual(stopCalled, true);
+			var called = false;
+			for (var i = 0; i < mock.invocations.length; i++) {
+				if (mock.invocations[i].method === '_stopIdleFlushMonitor') {
+					called = true;
+					break;
+				}
+			}
+
+			assert.ok(called);
 		});
 	});
 
@@ -359,16 +364,14 @@ describe('RedshiftBulkInsert', function() {
 			var flushOp = RedshiftBulkInsert.prototype.flush.call(mock.object);
 			assert.strictEqual(flushOp, mock.dummy);
 
-			mock.invocations.pop();
-			mock.invocations.pop();
+			var actual = mock.invocations[mock.invocations.length - 2].arguments;
 
-			var actual = mock.invocations.pop().arguments;
+			assert.strictEqual(actual[0], EXPECTED_BUCKET);
+			assert.strictEqual(actual[1], EXPECTED_KEY);
+			assert.deepEqual(actual[2], expectedBuffer);
+			assert.strictEqual(actual[3], expectedBufferLength);
+			assert.strictEqual(actual[4], EXPECTED_COPY_QUERY);
 
-			assert.strictEqual(actual[0], expectedBuffer);
-			assert.deepEqual(actual[0], expectedBuffer);
-			assert.strictEqual(actual[1], expectedBufferLength);
-			assert.strictEqual(actual[2], EXPECTED_KEY);
-			assert.strictEqual(actual[3], EXPECTED_COPY_QUERY);
 		});
 
 		it('decreases the flush operations count when a flush operation is done', function () {
@@ -501,6 +504,18 @@ describe('RedshiftBulkInsert', function() {
 			return mock;
 		}
 
+		it('Ctor', function () {
+
+			var expectedBuffer = [new Buffer('1'), new Buffer('2')];
+			var flushOp = new FlushOperation('mybucket', 'mykey', expectedBuffer, 10, EXPECTED_COPY_QUERY);
+
+			assert.strictEqual(flushOp.bucket, 'mybucket');
+			assert.strictEqual(flushOp.key, 'mykey');
+			assert.deepEqual(flushOp.buffer, expectedBuffer);
+			assert.strictEqual(flushOp.bufferLength, 10);
+			assert.strictEqual(flushOp.copyQuery, EXPECTED_COPY_QUERY);
+		});
+
 		it('uploads to s3', function () {
 			var mock = createFlushOperationMock();
 			var s3mock = createS3Mock();
@@ -536,8 +551,8 @@ describe('RedshiftBulkInsert', function() {
 			topic.start.call(mock.object, s3Mock.object, dsMock.object);
 
 
-			var success = mock.invocations.pop();
-			assert.strictEqual(success.method, 'success');
+			var done = mock.invocations.pop();
+			assert.strictEqual(done.method, 'done');
 
 			// setTimeout(function () {
 			// 	console.log(mock.invocations); done()
@@ -591,7 +606,7 @@ describe('RedshiftBulkInsert', function() {
 
 			var datastore = new MockDatastore();
 			var s3 = new MockS3();
-			var opts = _u.clone(options);
+			var opts = _l.clone(options);
 
 			opts.idleFlushPeriod = 1000;
 

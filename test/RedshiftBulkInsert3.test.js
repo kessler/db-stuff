@@ -3,7 +3,7 @@ var assert = require('assert');
 var fs = require('fs');
 var path = require('path');
 var $u = require('util');
-var _u = require('underscore');
+var _u = require('lodash');
 
 var dbStuff = require('../index.js');
 
