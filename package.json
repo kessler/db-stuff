@@ -16,7 +16,7 @@
     "async": "~0.2.9",
     "pg": "~2.9.0",
     "log4js": "~0.6.9",
-    "zero-s3": "0.0.15",
+    "s3shield": "0.0.14",
     "polymock": "~1.0.5",
     "lodash": "~2.4.1"
   },
@@ -37,7 +37,6 @@
     "node": ">=0.10"
   },
   "devDependencies": {
-    "polymock": "~1.0.6",
-    "s3shield": "0.0.12"
+    "polymock": "~1.0.6"
   }
 }
