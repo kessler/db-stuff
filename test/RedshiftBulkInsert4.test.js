@@ -526,8 +526,8 @@ describe('RedshiftBulkInsert', function() {
 			functor(function(err, res) {});
 
 			assert.strictEqual(s3mock.invocations[0].method, 'put');
-			assert.deepEqual(s3mock.invocations[0].arguments[0], Buffer.concat([mock.b1, mock.b2]));
-			assert.strictEqual(s3mock.invocations[0].arguments[1], EXPECTED_KEY);
+			assert.strictEqual(s3mock.invocations[0].arguments[0], EXPECTED_KEY);
+			assert.deepEqual(s3mock.invocations[0].arguments[1], Buffer.concat([mock.b1, mock.b2]));
 			assert.strictEqual(typeof(s3mock.invocations[0].arguments[2]), 'function');
 		});
 
