@@ -136,7 +136,7 @@ describe('RedshiftBulkInsert', function() {
 			uploadToS3(function() {
 
 				var expected = generateExpected(2, rsbl.delimiter);
-				var actual = mockS3.buffer.toString('utf8');
+				var actual = mockS3.opts.Body.toString('utf8'); 
 
 				assert.strictEqual(actual, expected);
 
