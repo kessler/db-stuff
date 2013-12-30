@@ -68,21 +68,60 @@ describe('BulkInsertRetryPolicy', function () {
 		assert.strictEqual(typeof(flushOpMock.invocations[0].arguments[1]), 'function');
 	});
 
-	it('retries (sometimes with a delay) when an error event raised by a flush op instance', function (done) {
+	it('retries the operation (sometimes with a delay) when an error event is raised by a flush op instance', function (done) {
 
 		var mock = createRSBLMock();
+		var flushOpMock = createFlushOpMock();
 		var emitter = BulkInsertRetryPolicy.ephemeralRetryPolicy(mock.object);
 
-		var flushOpMock = createFlushOpMock();
+		emitter.on('next flush', function(flushOp, job) {
+			assert.strictEqual(flushOp, flushOpMock.object);
+			done();
+		});
+
+		emitter.on('no more retries', function (flushop) {
+			done('no more retries every should not have been raised');
+		});
 
 		mock.emitter.emit('flush', flushOpMock.object);
 
 		flushOpMock.emitter.emit('error', 'damn!', flushOpMock.object);
+	});
+
+	it('stops after a predefined number of retries', function (done) {
+		this.timeout(2500);
+		var mock = createRSBLMock();
+		var flushOpMock = createFlushOpMock();
+
+		var options = {
+			timeSlot: 2,
+			retryCalculation: BulkInsertRetryPolicy.exponentialBackoff,
+			maxRetries: 3
+		};
+
+		var emitter = BulkInsertRetryPolicy.ephemeralRetryPolicy(mock.object, options);
+
+		var retries = 0;
 
 		emitter.on('next flush', function(flushOp, job) {
-			console.log(job)
-			done();
+			assert.strictEqual(flushOp, flushOpMock.object);
+			assert.ok(++retries <= 3);
 		});
+
+		emitter.on('no more retries', function (flushop) {
+			done('no more retries should not have been raised');
+		});
+
+		mock.emitter.emit('flush', flushOpMock.object);
+
+		flushOpMock.emitter.emit('error', 'damn!', flushOpMock.object);
+		flushOpMock.emitter.emit('error', 'damn!', flushOpMock.object);
+		flushOpMock.emitter.emit('error', 'damn!', flushOpMock.object);
+
+		setTimeout(function() {
+			assert.strictEqual(retries, 3);
+			done();
+		}, 2000);
 	});
 
 });
