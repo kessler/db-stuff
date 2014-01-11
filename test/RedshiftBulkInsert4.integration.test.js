@@ -3,11 +3,22 @@ var async = require('async');
 var path = require('path');
 var s3shield = require('s3shield');
 var assert = require('assert');
-var clientProviderClass = s3shield.S3ClientProviderSelector.get('knox');
-var clientProvider = new clientProviderClass();
 var pg = require('pg');
 var knox = require('knox');
-var config = require('rc')('rsbi4');
+var dbStuff = require('../index.js');
+var rc = require('rc');
+
+var clientProviderClass = s3shield.S3ClientProviderSelector.get('knox');
+var clientProvider = new clientProviderClass();
+
+var config = rc('rsbi4');
+
+var testFunction = describe;
+
+if (!config.aws) {
+	testFunction = describe.skip;
+	conosle.log('skipping this test since no credentials were supplied (.s3shieldrc and .rsbi4rc)');
+}
 
 var s3Client = knox.createClient({
     key: 		config.aws.accessKeyId,
@@ -65,7 +76,7 @@ function verifyInsertedData(services, callback) {
 
 function initTest(callback) {
 	var services = {};
-	var ds = require('../index.js').create(config.redshift, function(){
+	var ds = dbStuff.create(config.redshiftOptions, function(){
 		services.ds = ds;
 		callback(null, services);
 	});

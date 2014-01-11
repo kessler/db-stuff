@@ -1,6 +1,6 @@
 {
   "name": "db-stuff",
-  "version": "0.0.63",
+  "version": "0.0.64",
   "description": "db-stuff",
   "main": "index.js",
   "author": {
@@ -38,6 +38,7 @@
     "node": ">=0.10"
   },
   "devDependencies": {
-    "polymock": "~1.0.7"
+    "polymock": "~1.0.7",
+    "rc": "~0.3.2"
   }
 }

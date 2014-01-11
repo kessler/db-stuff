@@ -37,7 +37,7 @@ describe('BulkInsertRetryPolicy', function () {
 
 		var options = { maxRetries: 10 };
 
-		var emitter = BulkInsertRetryPolicy.ephemeralRetryPolicy(mock.object, options);
+		var emitter = BulkInsertRetryPolicy.enableRetryPolicy(mock.object, options);
 
 		assert.strictEqual(options.maxRetries, 10);
 		assert.strictEqual(options.retryCalculation, BulkInsertRetryPolicy.defaults.retryCalculation);
@@ -48,7 +48,7 @@ describe('BulkInsertRetryPolicy', function () {
 	it('listens to flush ops starting on a bulkinsert instance', function () {
 		var mock = createRSBLMock();
 
-		var emitter = BulkInsertRetryPolicy.ephemeralRetryPolicy(mock.object);
+		var emitter = BulkInsertRetryPolicy.enableRetryPolicy(mock.object);
 
 		assert.strictEqual(mock.invocations[0].method, 'on');
 		assert.strictEqual(mock.invocations[0].arguments[0], 'flush');
@@ -57,7 +57,7 @@ describe('BulkInsertRetryPolicy', function () {
 
 	it('listens to an error event (only once) when a flush operation starts', function () {
 		var mock = createRSBLMock();
-		var emitter = BulkInsertRetryPolicy.ephemeralRetryPolicy(mock.object);
+		var emitter = BulkInsertRetryPolicy.enableRetryPolicy(mock.object);
 
 		var flushOpMock = createFlushOpMock();
 
@@ -72,9 +72,10 @@ describe('BulkInsertRetryPolicy', function () {
 
 		var mock = createRSBLMock();
 		var flushOpMock = createFlushOpMock();
-		var emitter = BulkInsertRetryPolicy.ephemeralRetryPolicy(mock.object);
+		var emitter = BulkInsertRetryPolicy.enableRetryPolicy(mock.object);
 
-		emitter.on('next flush', function(flushOp, job) {
+		emitter.on('next flush', function(flushOp, retries, job) {
+			assert.strictEqual(1, retries);
 			assert.strictEqual(flushOp, flushOpMock.object);
 			done();
 		});
@@ -99,7 +100,7 @@ describe('BulkInsertRetryPolicy', function () {
 			maxRetries: 3
 		};
 
-		var emitter = BulkInsertRetryPolicy.ephemeralRetryPolicy(mock.object, options);
+		var emitter = BulkInsertRetryPolicy.enableRetryPolicy(mock.object, options);
 
 		var retries = 0;
 
