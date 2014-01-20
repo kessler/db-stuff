@@ -4,6 +4,8 @@ var PostgresDatastore = module.exports.PostgresDatastore = require('./lib/Postgr
 var MysqlDatastore = module.exports.MysqlDatastore = require('./lib/MysqlDatastore');
 var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore');
 var DatastoreBase = module.exports.DatastoreBase = require('./lib/DatastoreBase');
+module.exports.Insert = require('./lib/Insert.js');
+module.exports.create = create;
 
 //backward compatibility:
 module.exports.Datastore = {
@@ -15,11 +17,7 @@ module.exports.Datastore = {
 };
 //end backward compatibility:
 
-module.exports.Insert = require('./lib/Insert.js');
-module.exports.BulkInsert = require('./lib/BulkInsert.js');
-module.exports.RedshiftBulkInsert3 = require('./lib/RedshiftBulkInsert3.js');
-module.exports.RedshiftBulkInsert = require('./lib/RedshiftBulkInsert3.js');
-module.exports.BulkInsertRetryPolicy = require('./lib/BulkInsertRetryPolicy.js');
+
 
 /*
 	factory for creating datastores.
@@ -75,7 +73,3 @@ function create(config, callback) {
 
 	return ds;
 };
-
-module.exports.create = create;
-
-

@@ -1,8 +1,7 @@
 var createDatastore = require('../index').create;
 
-
 var options = {
-	implementation: 'MysqlDatastore',	
+	implementation: 'MysqlDatastore',
 	database: 'mobilecore',
 	host: 'localhost',
 	user: 'mobilecore',
