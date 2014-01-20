@@ -248,9 +248,10 @@ describe('RedshiftBulkInsert', function() {
 
 			var len = mock.invocations.length;
 
-			assert.strictEqual(mock.invocations[len - 4].method, '_stopIdleFlushMonitor');
-			assert.strictEqual(mock.invocations[len - 3].method, 'flush');
-			assert.strictEqual(mock.invocations[len - 2].method, 'emit');
+			console.log(mock.invocations)
+
+			assert.strictEqual(mock.invocations[len - 3].method, '_stopIdleFlushMonitor');
+			assert.strictEqual(mock.invocations[len - 2].method, 'flush');
 			assert.strictEqual(mock.invocations[len - 1].method, '_startIdleFlushMonitor');
 		});
 	});
@@ -475,6 +476,24 @@ describe('RedshiftBulkInsert', function() {
 			mock.createProperty('buffer', [mock.b1, mock.b2]);
 			mock.createProperty('bufferLength', mock.b1.length + mock.b2.length);
 
+			// the following methods of FlushOperation are function generators.
+			// special() is a method that return a function as expected. The returned function is also added to the mock with the same
+			// name as the generator function but with a suffix of Functor, e.g _uploadToS3Functor.
+			// This way when the test calls _uploadToS3 mock, it returns a function that is a mock as well.
+			//
+			// TODO this is actually too complex, and must be implemented differently
+			mock.createMethod('_uploadToS3', special('_uploadToS3'));
+			mock.createMethod('_updateUploadLatency', special('_updateUploadLatency'));
+			mock.createMethod('_updateQueryLatency', special('_updateQueryLatency'));
+			mock.createMethod('_executeCopyQuery', special('_executeCopyQuery'));
+
+
+			mock.createMethod('_prepareBuffer', );
+			mock.createMethod('done');
+			mock.createMethod('emit');
+
+			return mock;
+
 			// creates a functor on the mock object that records invocations of returned functions
 			function special(what) {
 				var name = what + 'Functor';
@@ -485,15 +504,6 @@ describe('RedshiftBulkInsert', function() {
 					mock.object[name].apply(mock.object, Array.prototype.slice(arguments, 0));
 				}
 			}
-
-			mock.createMethod('_uploadToS3', special('_uploadToS3'));
-			mock.createMethod('_updateUploadLatency', special('_updateUploadLatency'));
-			mock.createMethod('_updateQueryLatency', special('_updateQueryLatency'));
-			mock.createMethod('_executeCopyQuery', special('_executeCopyQuery'));
-			mock.createMethod('done');
-			mock.createMethod('emit');
-
-			return mock;
 		}
 
 		function createS3Mock() {
