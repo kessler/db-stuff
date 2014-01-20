@@ -488,7 +488,7 @@ describe('RedshiftBulkInsert', function() {
 			mock.createMethod('_executeCopyQuery', special('_executeCopyQuery'));
 
 
-			mock.createMethod('_prepareBuffer', );
+			mock.createMethod('_prepareBuffer', Buffer.concat([mock.b1, mock.b2]));
 			mock.createMethod('done');
 			mock.createMethod('emit');
 
