@@ -1,5 +1,6 @@
 var logger = require('log4js').getLogger('db-stuff');
 
+var BlackholeDatastore = module.exports.BlackholeDatastore = require('./lib/BlackholeDatastore');
 var PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore');
 var MysqlDatastore = module.exports.MysqlDatastore = require('./lib/MysqlDatastore');
 var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore');
