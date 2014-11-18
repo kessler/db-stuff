@@ -49,11 +49,11 @@ dbStuff.create(config, function (err, datastore) {
 		console.log(err);
 	}
 
-	var insertCommand = datastore.insert('table', ['fieldA', 'fieldB']);
+	var insertCommand = datastore.newInsertCommand('table', ['fieldA', 'fieldB']);
 
-	insertCommand.insert([1, 2], cb);
+	insertCommand.execute([1, 2], cb);
 
-	insertCommand.insert('1,2', cb);
+	insertCommand.execute('1,2', cb);
 });
 
 
