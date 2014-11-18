@@ -1,8 +1,22 @@
 var logger = require('log4js').getLogger('db-stuff');
 
 var BlackholeDatastore = module.exports.BlackholeDatastore = require('./lib/BlackholeDatastore');
-var PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore');
-var MysqlDatastore = module.exports.MysqlDatastore = require('./lib/MysqlDatastore');
+var PostgresDatastore
+try {
+	PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore');
+} catch (ep) {
+	if (ep.code !== 'MODULE_NOT_FOUND')
+		throw ep
+}
+
+var MysqlDatastore
+try {
+	MysqlDatastore= module.exports.MysqlDatastore = require('./lib/MysqlDatastore');
+} catch (em) {
+	if (em.code !== 'MODULE_NOT_FOUND')
+		throw em
+}
+
 var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore');
 var DatastoreBase = module.exports.DatastoreBase = require('./lib/DatastoreBase');
 module.exports.Insert = require('./lib/Insert.js');
@@ -49,8 +63,14 @@ function create(config, callback) {
 	}
 
 	if (implementation === 'PostgresDatastore') {
+		if (!PostgresDatastore)
+			throw new Error('try npm install pg first');
+
 		ds = new PostgresDatastore(config);
 	} else if (implementation === 'MysqlDatastore') {
+		if (!MysqlDatastore)
+			throw new Error('try npm install mysql first');
+
 		ds = new MysqlDatastore(config);
 	} else if (implementation === 'DevelopmentDatastore'){
 		ds = new DevelopmentDatastore();

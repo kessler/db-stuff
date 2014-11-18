@@ -1,5 +1,6 @@
 # Database abstraction
 Attempt to provide a unified low level interface to various databases. Currently supports:
+one need to npm install pg / mysql as peer dependencies in order to use those implementations
 
 1. MySql
 2. PostgreSql
@@ -23,6 +24,14 @@ dbStuff.create(config, function (err, datastore) {
 		console.log(err, data);
 	});
 
+	datastore.insert('table', { a: 1, b: 2}, function (err) {
+
+	})
+
+	datastore.update('table', { a: 1, b: 2}, function (err) {
+		
+	})
+
 	datastore.createQuery('select * from table where x=%', [1], function(err, q) {
 		q.on('row', function(row) {
 
@@ -44,14 +53,14 @@ dbStuff.create(config, function (err, datastore) {
 	});
 
 
-	//reusable insert command
+	//reusable/batch insert command
 	function cb(err) {
 		console.log(err);
 	}
 
 	var insertCommand = datastore.newInsertCommand('table', ['fieldA', 'fieldB']);
 
-	insertCommand.execute([1, 2], cb);
+	insertCommand.execute([ [1, 2], [3, 4] ],, cb);
 
 	insertCommand.execute('1,2', cb);
 });

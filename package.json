@@ -7,9 +7,7 @@
     "name": "Yaniv Kessler"
   },
   "dependencies": {
-    "mysql": "2.0.0-alpha8",
-    "log4js": "~0.6.9",
-    "pg": "^3.0.3"
+    "log4js": "~0.6.9"   
   },
   "repository": {
     "type": "git",
@@ -29,7 +27,6 @@
   },
   "devDependencies": {
     "polymock": "~1.0.7",
-    "s3shield": "0.0.14",
     "rc": "~0.3.2"
   }
 }
