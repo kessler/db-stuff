@@ -26,7 +26,7 @@ dbStuff.create(config, function (err, datastore) {
 	});
 	
 	// with params
-	datastore.query('select * table where x=?', [1], function(err, data) {
+	datastore.query('select * table where x=$1', [1], function(err, data) {
 		console.log(err, data);
 	});
 
@@ -43,7 +43,7 @@ dbStuff.create(config, function (err, datastore) {
 	})
 
 	// with params
-	datastore.createQuery('select * from table where x=?', [1], function(err, q) {
+	datastore.createQuery('select * from table where x=$1', [1], function(err, q) {
 		q.on('row', function(row) {
 
 		});
