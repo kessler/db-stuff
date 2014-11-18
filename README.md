@@ -24,20 +24,26 @@ dbStuff.create(config, function (err, datastore) {
 	datastore.query('select * table', function(err, data) {
 		console.log(err, data);
 	});
-
-	datastore.query('select * table where x=%', [1], function(err, data) {
+	
+	// with params
+	datastore.query('select * table where x=?', [1], function(err, data) {
 		console.log(err, data);
 	});
 
 	datastore.insert('table', { a: 1, b: 2}, function (err) {
-
 	})
 
-	datastore.update('table', { a: 1, b: 2}, function (err) {
-		
+	datastore.update('table', { a: 1, b: 3}, function (err) {		
 	})
 
-	datastore.createQuery('select * from table where x=%', [1], function(err, q) {
+	datastore.update('table', { a: 1, b: 3}, {id: 1, b:2 } function (err) {		
+		// update record where id = 1 AND b = 2
+		// this simple filter only supports AND(s)
+		// for more complex stuff just run query() 
+	})
+
+	// with params
+	datastore.createQuery('select * from table where x=?', [1], function(err, q) {
 		q.on('row', function(row) {
 
 		});
@@ -66,7 +72,9 @@ dbStuff.create(config, function (err, datastore) {
 	var insertCommand = datastore.newInsertCommand('table', ['fieldA', 'fieldB']);
 
 	insertCommand.execute([ [1, 2], [3, 4] ],, cb);
+	insertCommand.execute([1,2], cb);
 
+	// raw strings - will be places directly inside VALUES (...), this is very unsafe though
 	insertCommand.execute('1,2', cb);
 });
 
