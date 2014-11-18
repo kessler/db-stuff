@@ -1,11 +1,16 @@
 # Database abstraction
 Attempt to provide a unified low level interface to various databases. Currently supports:
-one need to npm install pg / mysql as peer dependencies in order to use those implementations
 
 1. MySql
 2. PostgreSql
 
+one need to npm install pg / mysql in order to use those implementations
+
 ### Example
+```
+ $ npm install db-stuff pg
+```
+
 ```
 var dbStuff = require('db-stuff');
 
