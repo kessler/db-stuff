@@ -1,16 +1,24 @@
-var assert = require('assert');
-var dbStuff = require('../index');
-var createDatastore = dbStuff.create;
+var assert = require('assert')
+var dbStuff = require('../index')
+var createDatastore = dbStuff.create
 
 describe('Datastore', function () {
-	it('Creates instances using an async factory method', function (done) {
-		createDatastore("DevelopmentDatastore", function (err, instance) {
-			if (err)
-				assert.fail(err);
+	var db
 
-			assert.ok(typeof(instance) !== 'undefined');
-			assert.ok(instance instanceof dbStuff.DevelopmentDatastore);
-			done();
-		});	
-	});
-});
+	it('Creates instances using an async factory method', function (done) {
+		assert.ok(typeof(db) !== 'undefined')
+		assert.ok(db instanceof dbStuff.DevelopmentDatastore)
+		done()		
+	})
+
+	it('format field', function () {
+		assert.strictEqual(db.formatField('asd!!!123'), 'asd___123')
+	})
+
+	beforeEach(function (done) {
+		createDatastore("DevelopmentDatastore", function (err, instance) {
+			db = instance
+			done(err)
+		})
+	})
+})
