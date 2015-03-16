@@ -7,7 +7,7 @@
     "name": "Yaniv Kessler"
   },
   "dependencies": {
-    "log4js": "~0.6.9"
+    "debug": "^2.1.3"
   },
   "repository": {
     "type": "git",

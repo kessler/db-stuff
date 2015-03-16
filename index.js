@@ -1,4 +1,4 @@
-var logger = require('log4js').getLogger('db-stuff');
+var debug = require('debug')('db-stuff');
 
 var BlackholeDatastore = module.exports.BlackholeDatastore = require('./lib/BlackholeDatastore');
 var PostgresDatastore
@@ -19,7 +19,9 @@ try {
 
 var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore');
 var DatastoreBase = module.exports.DatastoreBase = require('./lib/DatastoreBase');
+
 module.exports.Insert = require('./lib/Insert.js');
+
 module.exports.create = create;
 
 //backward compatibility:
@@ -83,7 +85,7 @@ function create(config, callback) {
 	// async
 	ds.create(function(err) {
 		if (err === null && logEnabled)
-			logger.info('** datastore connected, implementation is %s **', implementation);
+			debug('** datastore connected, implementation is %s **', implementation);
 
 		if (callback) {
 			if (err)
