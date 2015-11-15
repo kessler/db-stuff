@@ -1,13 +1,14 @@
 {
   "name": "db-stuff",
-  "version": "4.0.1",
+  "version": "4.0.0",
   "description": "db-stuff",
   "main": "index.js",
   "author": {
     "name": "Yaniv Kessler"
   },
   "dependencies": {
-    "debug": "^2.1.3"
+    "debug": "^2.1.3",
+    "sql-parser": "^0.4.0"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,7 @@
     "node": ">=0.10"
   },
   "devDependencies": {
+    "chai": "^3.4.1",
     "rc": "~0.3.2"
   }
 }
