@@ -11,7 +11,7 @@ one need to npm install pg / mysql in order to use those implementations
  $ npm install db-stuff pg
 ```
 
-```
+```javascript
 var dbStuff = require('db-stuff');
 
 var config = {
