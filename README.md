@@ -71,11 +71,16 @@ dbStuff.create(config, function (err, datastore) {
 
 	var insertCommand = datastore.newInsertCommand('table', ['fieldA', 'fieldB']);
 
-	insertCommand.execute([ [1, 2], [3, 4] ],, cb);
 	insertCommand.execute([1,2], cb);
-
 	// raw strings - will be places directly inside VALUES (...), this is very unsafe though
 	insertCommand.execute('1,2', cb);
+
+	var bulkInsertCommand = datastore.newBulkInsertCommand('table', ['fieldA', 'fieldB'])
+	bulkInsertCommand.execute([
+		[1,2],
+		[3,4],
+		[5,6]
+	], cb)
 });
 
 
