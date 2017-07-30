@@ -83,5 +83,4 @@ dbStuff.create(config, function (err, datastore) {
 	], cb)
 });
 
-
 ```
