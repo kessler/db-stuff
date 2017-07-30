@@ -5,16 +5,18 @@ var PostgresDatastore
 try {
 	PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore')
 } catch (ep) {
-	if (ep.code !== 'MODULE_NOT_FOUND')
+	if (ep.code !== 'MODULE_NOT_FOUND') {
 		throw ep
+	}
 }
 
 var MysqlDatastore
 try {
 	MysqlDatastore= module.exports.MysqlDatastore = require('./lib/MysqlDatastore')
 } catch (em) {
-	if (em.code !== 'MODULE_NOT_FOUND')
+	if (em.code !== 'MODULE_NOT_FOUND') {
 		throw em
+	}
 }
 
 var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore')
@@ -60,8 +62,9 @@ function create(config, callback) {
 	} else {
 		implementation = config.implementation
 
-		if (config.logEnabled !== undefined)
+		if (config.logEnabled !== undefined) {
 			logEnabled = config.logEnabled
+		}
 	}
 
 	if (implementation === 'PostgresDatastore') {
@@ -70,8 +73,9 @@ function create(config, callback) {
 
 		ds = new PostgresDatastore(config)
 	} else if (implementation === 'MysqlDatastore') {
-		if (!MysqlDatastore)
+		if (!MysqlDatastore) {
 			throw new Error('try npm install mysql first')
+		}
 
 		ds = new MysqlDatastore(config)
 	} else if (implementation === 'DevelopmentDatastore'){
@@ -84,12 +88,14 @@ function create(config, callback) {
 
 	// async
 	ds.create(function(err) {
-		if (err === null && logEnabled)
+		if (err === null && logEnabled) {
 			debug('** datastore connected, implementation is %s **', implementation)
+		}
 
 		if (callback) {
-			if (err)
+			if (err) {
 				err.implementation = implementation
+			}
 			callback(err, ds)
 		}
 	})
