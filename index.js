@@ -1,9 +1,9 @@
-var debug = require('debug')('db-stuff');
+var debug = require('debug')('db-stuff')
 
-var BlackholeDatastore = module.exports.BlackholeDatastore = require('./lib/BlackholeDatastore');
+var BlackholeDatastore = module.exports.BlackholeDatastore = require('./lib/BlackholeDatastore')
 var PostgresDatastore
 try {
-	PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore');
+	PostgresDatastore = module.exports.PostgresDatastore = require('./lib/PostgresDatastore')
 } catch (ep) {
 	if (ep.code !== 'MODULE_NOT_FOUND')
 		throw ep
@@ -11,18 +11,18 @@ try {
 
 var MysqlDatastore
 try {
-	MysqlDatastore= module.exports.MysqlDatastore = require('./lib/MysqlDatastore');
+	MysqlDatastore= module.exports.MysqlDatastore = require('./lib/MysqlDatastore')
 } catch (em) {
 	if (em.code !== 'MODULE_NOT_FOUND')
 		throw em
 }
 
-var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore');
-var DatastoreBase = module.exports.DatastoreBase = require('./lib/DatastoreBase');
+var DevelopmentDatastore = module.exports.DevelopmentDatastore = require('./lib/DevelopmentDatastore')
+var DatastoreBase = module.exports.DatastoreBase = require('./lib/DatastoreBase')
 
-module.exports.Insert = require('./lib/Insert.js');
+module.exports.Insert = require('./lib/Insert.js')
 
-module.exports.create = create;
+module.exports.create = create
 
 //backward compatibility:
 module.exports.Datastore = {
@@ -31,7 +31,7 @@ module.exports.Datastore = {
 	MysqlDatastore: MysqlDatastore,
 	DatastoreBase: DatastoreBase,
 	create: create
-};
+}
 //end backward compatibility:
 
 
@@ -41,58 +41,58 @@ module.exports.Datastore = {
 
 	usage:
 
-	var ds = Datastore.create( { implementation: 'SomeImplementation', logEnabled: false, additional config params... }, myCallback);
+	var ds = Datastore.create( { implementation: 'SomeImplementation', logEnabled: false, additional config params... }, myCallback)
 
-	var ds = Datastore.create( { implementation: 'SomeImplementation', additional config params... });
+	var ds = Datastore.create( { implementation: 'SomeImplementation', additional config params... })
 
-	var ds = Datastore.create('SomeImplementation', myCallback);
+	var ds = Datastore.create('SomeImplementation', myCallback)
 
-	var ds = Datastore.create('SomeImplementation');
+	var ds = Datastore.create('SomeImplementation')
 */
 function create(config, callback) {
-	var ds;
+	var ds
 
-	var implementation;
-	var logEnabled = true;
+	var implementation
+	var logEnabled = true
 
 	if (typeof(config) === 'string') {
-		implementation = config;
+		implementation = config
 	} else {
-		implementation = config.implementation;
+		implementation = config.implementation
 
 		if (config.logEnabled !== undefined)
-			logEnabled = config.logEnabled;
+			logEnabled = config.logEnabled
 	}
 
 	if (implementation === 'PostgresDatastore') {
 		if (!PostgresDatastore)
-			throw new Error('try npm install pg first');
+			throw new Error('try npm install pg first')
 
-		ds = new PostgresDatastore(config);
+		ds = new PostgresDatastore(config)
 	} else if (implementation === 'MysqlDatastore') {
 		if (!MysqlDatastore)
-			throw new Error('try npm install mysql first');
+			throw new Error('try npm install mysql first')
 
-		ds = new MysqlDatastore(config);
+		ds = new MysqlDatastore(config)
 	} else if (implementation === 'DevelopmentDatastore'){
-		ds = new DevelopmentDatastore();
+		ds = new DevelopmentDatastore()
 	} else if (implementation === 'BlackholeDatastore'){
-		ds = new BlackholeDatastore();
+		ds = new BlackholeDatastore()
 	} else {
-		throw new Error('Must specify implementation');
+		throw new Error('Must specify implementation')
 	}
 
 	// async
 	ds.create(function(err) {
 		if (err === null && logEnabled)
-			debug('** datastore connected, implementation is %s **', implementation);
+			debug('** datastore connected, implementation is %s **', implementation)
 
 		if (callback) {
 			if (err)
-				err.implementation = implementation;
-			callback(err, ds);
+				err.implementation = implementation
+			callback(err, ds)
 		}
-	});
+	})
 
-	return ds;
-};
+	return ds
+}
