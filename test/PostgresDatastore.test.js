@@ -36,8 +36,4 @@ describe('PostgresDatastore', function () {
 			})
 		})
 	})
-
-	// it('format field', function () {
-	// 	assert.strictEqual(db.formatField('asd!!!123'), 'asd___123')
-	// })
 })
