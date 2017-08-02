@@ -36,4 +36,13 @@ describe('PostgresDatastore', function () {
 			})
 		})
 	})
+
+	it('end connection', function (done) {
+		createDatastore(config, function (err, instance) {
+			if (err) return done(err)
+
+			instance.end()
+			done()
+		})
+	})
 })
