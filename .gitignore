@@ -1,4 +1,3 @@
-.rsbi4rc
-.s3shieldrc
 node_modules
 npm-debug.log
+.*rc
