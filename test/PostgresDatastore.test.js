@@ -24,13 +24,11 @@ describe('PostgresDatastore', function () {
 		createDatastore(config, function (err, instance) {
 			if (err) return done(err)
 
-			instance.query('select * from test', function(err, result) {
+			instance.query('select 1+1 as result', function(err, result) {
 				if (err) return done(err)
-
+					
 				assert(result.rows.length === 1)
-				assert(result.rows[0].foo === 1)
-				assert(result.rows[0].bar === 'test')
-
+				assert(result.rows[0].result === 2)
 				instance.end()
 				done()
 			})
