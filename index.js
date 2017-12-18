@@ -88,7 +88,7 @@ function create(config, callback) {
 
 	// async
 	ds.create(function(err) {
-		if (err === null && logEnabled) {
+		if (!err && logEnabled) {
 			debug('** datastore connected, implementation is %s **', implementation)
 		}
 
